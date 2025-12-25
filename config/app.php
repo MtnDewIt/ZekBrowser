@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'ElDewrito Services'),
+    'name' => env('APP_NAME', 'ElDewrito Server Browser'),
 
     /*
     |--------------------------------------------------------------------------
