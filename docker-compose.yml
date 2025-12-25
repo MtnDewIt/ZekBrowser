@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: eldewrito-services
+    container_name: zekbrowser
     restart: unless-stopped
     working_dir: /var/www
     volumes:

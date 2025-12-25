@@ -57,6 +57,19 @@ async def fetch_master_list(client: httpx.AsyncClient, url: str) -> List[str]:
         logger.warning(f"Failed to query master server {url}: {e}")
     return []
 
+async def fetch_server_mods(client: httpx.AsyncClient, ip_port: str) -> Optional[Dict[str, Any]]:
+    """Queries a specific game server's /mods endpoint and returns mod data."""
+    try:
+        url = f"http://{ip_port}/mods"
+        response = await client.get(url, timeout=API_TIMEOUT)
+        response.raise_for_status()
+        mods_data = response.json()
+        return mods_data
+    except Exception as e:
+        # Server might not have mods endpoint or it's unreachable
+        logger.debug(f"Failed to fetch mods from {ip_port}: {e}")
+        return None
+
 async def fetch_game_server_info(client: httpx.AsyncClient, ip_port: str) -> Optional[Dict[str, Any]]:
     """Queries a specific game server and formats the data."""
     try:
@@ -83,12 +96,21 @@ async def fetch_game_server_info(client: httpx.AsyncClient, ip_port: str) -> Opt
         server_data['firstSeenAt'] = get_current_http_date()
 
         # Generate short version if not present
+        version_short = None
         if 'eldewritoVersion' in server_data:
-             server_data['eldewritoVersionShort'] = server_data['eldewritoVersion'].split('-')[0]
+             version_short = server_data['eldewritoVersion'].split('-')[0]
+             server_data['eldewritoVersionShort'] = version_short
+
+        # Fetch mods data (Will need to update this if we ever get to 0.8)
+        if version_short and version_short.startswith("0.7"):
+            mods_data = await fetch_server_mods(client, ip_port)
+            if mods_data:
+                server_data['mods'] = mods_data
 
         return ip_port, server_data
     except Exception as e:
         # Server might be offline or unreachable
+        logger.debug(f"Failed to fetch server info from {ip_port}: {e}")
         return None
 
 async def update_server_cache():
