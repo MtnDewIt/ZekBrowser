@@ -63,7 +63,7 @@ class HandleInertiaRequests extends Middleware
     public function handle(Request $request, Closure $next): Response
     {
         if (Route::currentRouteName() === 'home') {
-            $this->rootView = 'plebbrowser';
+            $this->rootView = 'zekbrowser';
         }
 
         return parent::handle($request, $next);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import ServerBrowser from '@/components/server-browser/plebbrowser/ServerBrowser.vue';
+import ServerBrowser from '@/components/server-browser/zekbrowser/ServerBrowser.vue';
 import { ValidationError } from '@/exceptions/ValidationError';
 import { ElDewritoServer } from '@/models/ElDewritoServer';
 import { Head } from '@inertiajs/vue3';
@@ -9,7 +9,7 @@ import { Chart } from 'highcharts-vue';
 import { onMounted, ref } from 'vue';
 
 interface Props {
-    plebBrowserApi: string;
+    zekBrowserApi: string;
 }
 
 const props = defineProps<Props>();
@@ -52,8 +52,8 @@ const chartOptions = ref({
     },
 });
 
-function fetchPlebBrowser() {
-    fetch(props.plebBrowserApi)
+function fetchZekBrowser() {
+    fetch(props.zekBrowserApi)
         .then((response) => response.json())
         .then((data) => {
             updateCounts(data.count);
@@ -90,7 +90,6 @@ function fetchPlebBrowser() {
                     isDedicated: server.isDedicated,
                     gameVersion: server.gameVersion,
                     eldewritoVersion: server.eldewritoVersion,
-                    adultsOnly: server.adultsOnly,
                     firstSeenAt: server.firstSeenAt,
                     eldewritoVersionShort: server.eldewritoVersionShort,
                     reverseDns: server.reverseDns,
@@ -129,7 +128,7 @@ function updateCounts(count) {
 }
 
 function fetchStats() {
-    fetch(`${props.plebBrowserApi}/stats`)
+    fetch(`${props.zekBrowserApi}/stats`)
         .then((response) => response.json())
         .then((data) => {
             chartOptions.value.series = [
@@ -160,13 +159,13 @@ function fetchStats() {
 }
 
 onMounted(async () => {
-    fetchPlebBrowser();
+    fetchZekBrowser();
     fetchStats();
 });
 </script>
 
 <template>
-    <Head title="PlebBrowser">
+    <Head title="ZekBrowser">
         <meta
             name="description"
             content="Find and join ElDewrito servers with the server browser. Play unique maps, game modes, and mods from the community."
@@ -175,7 +174,7 @@ onMounted(async () => {
 
     <section class="section">
         <div class="container">
-            <h1 class="title is-2">PlebBrowser</h1>
+            <h1 class="title is-2">ZekBrowser</h1>
             <p class="subtitle is-spaced">{{ browserStatus }}</p>
 
             <div class="table-container">

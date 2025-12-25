@@ -5,13 +5,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | PlebBrowser API URL (temporary)
+    | ZekBrowser API URL (temporary)
     |--------------------------------------------------------------------------
     |
-    | The URL of the PlebBrowser API, used to populate the server browser and stats.
+    | The URL of the ZekBrowser API, used to populate the server browser and stats.
     |
     */
 
-    'plebbrowser_api' => 'https://eldewrito.pauwlo.fr/api/',
+    'zekbrowser_api' => env('ZEKBROWSER_API', 'http://localhost:8000/api/'),
 
 ];

@@ -1,0 +1,32 @@
+{
+    "masterServers": 
+    [
+        {
+            "list": "http://eldewrito.pauwlo.fr/master/list"
+        },
+        {
+            "list": "http://ed.thebeerkeg.net/server/list"
+        },
+        {
+            "list": "http://master-server-01.letmehostit.com/list"
+        },
+        {
+            "list": "http://master-server-02.letmehostit.com/list"
+        },
+        {
+            "list": "http://master1.eldewrito.ch/list"
+        },
+        {
+            "list": "http://master2.eldewrito.ch/list"
+        },
+        {
+            "list": "http://master3.eldewrito.ch/list"
+        },
+        {
+            "list": "http://eldewrito.red-m.net/list"
+        },
+        {
+            "list": "https://masterserver.zekken.rocks/list"
+        }
+    ]
+}

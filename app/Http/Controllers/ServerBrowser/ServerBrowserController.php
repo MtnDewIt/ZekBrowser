@@ -10,21 +10,21 @@ class ServerBrowserController extends Controller
 {
     /**
      * Display the server browser page.
-     * Fetches data from the legacy PlebBrowser API.
+     * Fetches data from the legacy ZekBrowser API.
      * TODO: Implement local cache
      */
     public function index(Request $request): \Inertia\Response
     {
-        $theme = $request->get('theme', 'plebbrowser');
+        $theme = $request->get('theme', 'zekbrowser');
 
         $view = match ($theme) {
-            'plebbrowser' => 'PlebBrowser',
+            'zekbrowser' => 'ZekBrowser',
             'halo-ce' => 'HaloCE',
-            default => 'PlebBrowser',
+            default => 'ZekBrowser',
         };
 
         return Inertia::render("server-browser/$view", [
-            'plebBrowserApi' => config('eldewrito.plebbrowser_api'),
+            'zekBrowserApi' => config('eldewrito.zekbrowser_api'),
         ]);
     }
 }

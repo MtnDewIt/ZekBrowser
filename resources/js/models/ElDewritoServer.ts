@@ -31,7 +31,6 @@ export class ElDewritoServer {
     eldewritoVersion: string;
     mods?: array;
 
-    adultsOnly: boolean;
     eldewritoVersionShort: string;
     firstSeenAt: string;
     reverseDns?: string;
@@ -65,7 +64,6 @@ export class ElDewritoServer {
         isDedicated: boolean;
         gameVersion: string;
         eldewritoVersion: string;
-        adultsOnly: boolean;
         eldewritoVersionShort: string;
         firstSeenAt: string;
         reverseDns?: string;
@@ -123,7 +121,6 @@ export class ElDewritoServer {
             ['isDedicated', typeof data.isDedicated === 'boolean'],
             ['gameVersion', typeof data.gameVersion === 'string'],
             ['eldewritoVersion', typeof data.eldewritoVersion === 'string'],
-            ['adultsOnly', typeof data.adultsOnly === 'boolean'],
             ['eldewritoVersionShort', typeof data.eldewritoVersionShort === 'string'],
             ['firstSeenAt', typeof data.firstSeenAt === 'string'],
             ['reverseDns', typeof data.reverseDns === 'undefined' || typeof data.reverseDns === 'string'],

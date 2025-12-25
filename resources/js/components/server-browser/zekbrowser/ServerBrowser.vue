@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ElDewritoServer } from '@/models/ElDewritoServer';
-import DataTable from '@/components/server-browser/plebbrowser/DataTable.vue';
-import ModsCard from '@/components/server-browser/plebbrowser/ModsCard.vue';
+import DataTable from '@/components/server-browser/zekbrowser/DataTable.vue';
+import ModsCard from '@/components/server-browser/zekbrowser/ModsCard.vue';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown, ExternalLink } from 'lucide-vue-next';
 import { h } from 'vue';
@@ -103,15 +103,8 @@ const columns: ColumnDef<ElDewritoServer>[] = [
     },
 ]
 
-//const showAdultsOnly = ref(false);
-
 </script>
 
 <template>
     <DataTable :columns="columns" :data="servers" />
-
-    <!--<section class="mt-4">
-        <input type="checkbox" v-model="showAdultsOnly" id="show-adults-only" />
-        <label for="show-adults-only" class="ml-1">Show adults-only servers</label>
-    </section>-->
 </template>
