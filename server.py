@@ -2,8 +2,10 @@ import asyncio
 import json
 import logging
 import socket
+import sqlite3
 from datetime import datetime, timezone
 from email.utils import formatdate
+from pathlib import Path
 from typing import Dict, List, Set, Any, Optional
 
 import httpx
@@ -14,7 +16,9 @@ from fastapi.responses import JSONResponse
 # --- Configuration ---
 DEWRITO_JSON_PATH = "dewrito.json"
 REFRESH_INTERVAL = 15  # seconds
-API_TIMEOUT = 5.0      # seconds (timeout for querying individual servers)
+STATS_INTERVAL = 300   # 5 minutes in seconds
+API_TIMEOUT = 5.0      # seconds
+DB_PATH = "database/database.sqlite"
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,6 +30,87 @@ logger = logging.getLogger(__name__)
 api_cache: Dict[str, Any] = {}
 
 app = FastAPI()
+
+# --- Database Functions ---
+
+def init_db():
+    """Initialize the stats table if it doesn't exist."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Check if server_stats table exists, if not create it
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS server_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_count INTEGER NOT NULL DEFAULT 0,
+            server_count INTEGER NOT NULL DEFAULT 0,
+            recorded_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Create index for faster queries
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_recorded_at 
+        ON server_stats(recorded_at)
+    """)
+    
+    conn.commit()
+    conn.close()
+    logger.info("Database initialized")
+
+def save_stats(player_count: int, server_count: int):
+    """Save current stats to database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        now = datetime.now(timezone.utc)
+        
+        cursor.execute("""
+            INSERT INTO server_stats (player_count, server_count, recorded_at)
+            VALUES (?, ?, ?)
+        """, (player_count, server_count, now))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Saved stats: {server_count} servers, {player_count} players")
+    except Exception as e:
+        logger.error(f"Failed to save stats: {e}")
+
+def get_stats_history() -> Dict[str, List[List[int]]]:
+    """Retrieve historical stats from database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                CAST(strftime('%s', recorded_at) AS INTEGER) * 1000 as timestamp,
+                player_count,
+                server_count
+            FROM server_stats
+            ORDER BY recorded_at ASC
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        players = [[row[0], row[1]] for row in rows]
+        servers = [[row[0], row[2]] for row in rows]
+        
+        return {
+            "players": players,
+            "servers": servers
+        }
+    except Exception as e:
+        logger.error(f"Failed to retrieve stats: {e}")
+        return {
+            "players": [],
+            "servers": []
+        }
 
 # --- Helper Functions ---
 
@@ -178,7 +263,7 @@ async def update_server_cache():
         api_cache = new_cache
         logger.info(f"Cache updated. Servers: {len(successful_servers)}, Players: {total_players}")
 
-# --- Background Task Loop ---
+# --- Background Task Loops ---
 
 async def background_refresher():
     """Runs the update logic every X seconds."""
@@ -190,22 +275,42 @@ async def background_refresher():
         sleep_time = max(0, REFRESH_INTERVAL - elapsed)
         await asyncio.sleep(sleep_time)
 
+async def background_stats_recorder():
+    """Records stats to database every 5 minutes."""
+    while True:
+        await asyncio.sleep(STATS_INTERVAL)
+        
+        if api_cache and "count" in api_cache:
+            player_count = api_cache["count"].get("players", 0)
+            server_count = api_cache["count"].get("servers", 0)
+            save_stats(player_count, server_count)
+
 # --- FastAPI Events & Routes ---
 
 @app.on_event("startup")
 async def startup_event():
-    # Start the background task when the API starts
+    # Initialize database
+    init_db()
+    
+    # Start background tasks
     asyncio.create_task(background_refresher())
+    asyncio.create_task(background_stats_recorder())
 
 @app.get("/api/")
-async def get_stats():
-    # Serve the cached data. If cache is empty (startup), return 503 or empty structure.
+async def get_current_stats():
+    """Serve the current cached server data."""
     if not api_cache:
         return JSONResponse(
             status_code=503, 
             content={"error": "Server is warming up, please try again in a few seconds."}
         )
     return api_cache
+
+@app.get("/api/stats")
+async def get_historical_stats():
+    """Serve historical stats data for charting."""
+    stats = get_stats_history()
+    return stats
 
 # --- Entry Point ---
 
