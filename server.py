@@ -19,6 +19,7 @@ REFRESH_INTERVAL = 15  # seconds
 STATS_INTERVAL = 300   # 5 minutes in seconds
 API_TIMEOUT = 5.0      # seconds
 DB_PATH = "database/database.sqlite"
+LEGACY_STATS_URL = "https://eldewrito.pauwlo.com/api/stats"
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -33,8 +34,64 @@ app = FastAPI()
 
 # --- Database Functions ---
 
-def init_db():
-    """Initialize the stats table if it doesn't exist."""
+async def fetch_legacy_stats() -> Optional[Dict[str, List[List[int]]]]:
+    """Fetch historical stats from legacy API."""
+    try:
+        async with httpx.AsyncClient() as client:
+            logger.info(f"Fetching legacy stats from {LEGACY_STATS_URL}...")
+            response = await client.get(LEGACY_STATS_URL, timeout=30.0)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Validate structure
+            if "players" in data and "servers" in data:
+                if isinstance(data["players"], list) and isinstance(data["servers"], list):
+                    logger.info(f"Successfully fetched {len(data['players'])} historical data points")
+                    return data
+            
+            logger.warning("Legacy stats API returned unexpected format")
+            return None
+    except Exception as e:
+        logger.warning(f"Failed to fetch legacy stats: {e}")
+        return None
+
+def populate_stats_from_legacy(legacy_data: Dict[str, List[List[int]]]):
+    """Populate database with legacy stats data."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Combine players and servers data by timestamp
+        players_dict = {entry[0]: entry[1] for entry in legacy_data.get("players", [])}
+        servers_dict = {entry[0]: entry[1] for entry in legacy_data.get("servers", [])}
+        
+        # Get all unique timestamps
+        all_timestamps = set(players_dict.keys()) | set(servers_dict.keys())
+        
+        records_added = 0
+        for timestamp_ms in sorted(all_timestamps):
+            # Convert milliseconds to datetime
+            timestamp_dt = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+            
+            player_count = players_dict.get(timestamp_ms, 0)
+            server_count = servers_dict.get(timestamp_ms, 0)
+            
+            cursor.execute("""
+                INSERT INTO server_stats (player_count, server_count, recorded_at)
+                VALUES (?, ?, ?)
+            """, (player_count, server_count, timestamp_dt))
+            
+            records_added += 1
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Successfully populated database with {records_added} historical records")
+    except Exception as e:
+        logger.error(f"Failed to populate stats from legacy data: {e}")
+
+async def init_db():
+    """Initialize the stats table and populate with legacy data if empty."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -56,9 +113,24 @@ def init_db():
         ON server_stats(recorded_at)
     """)
     
+    # Check if table is empty
+    cursor.execute("SELECT COUNT(*) FROM server_stats")
+    count = cursor.fetchone()[0]
+    
     conn.commit()
     conn.close()
+    
     logger.info("Database initialized")
+    
+    # If table is empty, try to populate with legacy data
+    if count == 0:
+        logger.info("Stats table is empty, attempting to fetch legacy data...")
+        legacy_data = await fetch_legacy_stats()
+        
+        if legacy_data and (legacy_data.get("players") or legacy_data.get("servers")):
+            populate_stats_from_legacy(legacy_data)
+        else:
+            logger.info("No legacy data available, starting with empty stats database")
 
 def save_stats(player_count: int, server_count: int):
     """Save current stats to database."""
@@ -289,8 +361,8 @@ async def background_stats_recorder():
 
 @app.on_event("startup")
 async def startup_event():
-    # Initialize database
-    init_db()
+    # Initialize database (will populate with legacy data if empty)
+    await init_db()
     
     # Start background tasks
     asyncio.create_task(background_refresher())
