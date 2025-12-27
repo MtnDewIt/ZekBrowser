@@ -185,10 +185,6 @@ onMounted(async () => {
             <p class="subtitle">{{ statsStatus }}</p>
 
             <Chart v-if="chartOptions.series" :options="chartOptions"></Chart>
-
-            <footer class="mt-20 opacity-20 hover:underline">
-                <a :href="route('home')">owo what's this?</a>
-            </footer>
         </div>
     </section>
 
