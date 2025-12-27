@@ -19,7 +19,6 @@ class ServerBrowserController extends Controller
 
         $view = match ($theme) {
             'zekbrowser' => 'ZekBrowser',
-            'halo-ce' => 'HaloCE',
             default => 'ZekBrowser',
         };
 
