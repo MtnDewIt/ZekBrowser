@@ -19,7 +19,6 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { valueUpdater } from '@/lib/utils';
-import { Input } from '@/components/ui/input';
 import { ref } from 'vue';
 
 const props = defineProps<{
