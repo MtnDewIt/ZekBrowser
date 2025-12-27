@@ -18,11 +18,11 @@ class ServerBrowserController extends Controller
         $theme = $request->get('theme', 'zekbrowser');
 
         $view = match ($theme) {
-            'zekbrowser' => 'ZekBrowser',
-            default => 'ZekBrowser',
+            'zekbrowser' => 'zekbrowser',
+            default => 'zekbrowser',
         };
 
-        return Inertia::render("server-browser/$view", [
+        return Inertia::render("$view", [
             'zekBrowserApi' => config('eldewrito.zekbrowser_api'),
         ]);
     }
