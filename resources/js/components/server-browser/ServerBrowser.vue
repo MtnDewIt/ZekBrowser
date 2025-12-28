@@ -54,7 +54,7 @@ const columns: ColumnDef<ElDewritoServer>[] = [
         accessorFn: (row) => row.mods?.length ?? 0,
         cell: ({ row }) => {
             const mods = row.original.mods;
-            if (!mods || mods.length === 0) return null;
+            if (!mods || mods.length === 0) return 0;
             return h(ModsCard, {
                 mods: mods,
                 jsonUrl: `http://${row.original.ip}/mods`,

@@ -62,8 +62,9 @@ const processedPlayers = computed(() => {
             <div v-if="!players || players.length === 0">
                 No players
             </div>
-            <div v-else class="text-sm">
-                <div class="font-semibold mb-2">Players</div>
+            <div v-else>
+                <h4 class="mb-4 text-foreground has-text-weight-semibold">Players</h4>
+                <div class="text-sm">
                 <ul class="list-none p-0 space-y-1">
                     <li
                         v-for="({ player: p, emblemStr }, index) in processedPlayers"
@@ -74,8 +75,12 @@ const processedPlayers = computed(() => {
                             <img
                                 v-if="emblemStr && getEmblemSrc(emblemStr)"
                                 :src="getEmblemSrc(emblemStr)"
-                                class="w-7 h-7 rounded-sm mr-2 flex-shrink-0"
+                                class="rounded-sm mr-2 flex-shrink-0"
                                 alt="emblem"
+                                width="28"
+                                height="28"
+                                decoding="async"
+                                style="width:28px;height:28px;object-fit:contain"
                             />
                             <span class="truncate">
                                 {{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}
@@ -92,6 +97,7 @@ const processedPlayers = computed(() => {
                         </template>
                     </li>
                 </ul>
+                </div>
             </div>
         </HoverCardContent>
     </HoverCard>

@@ -154,17 +154,7 @@ export default async function generateEmblem(emblem: string): Promise<string> {
     // ignore foreground load errors
   }
 
-  // downscale to 28x28
-  const outW = 28, outH = 28;
-  const outCanvas = document.createElement('canvas');
-  outCanvas.width = outW; outCanvas.height = outH;
-  const outCtx = outCanvas.getContext('2d');
-  if (!outCtx) return '';
-  outCtx.imageSmoothingEnabled = true;
-  outCtx.imageSmoothingQuality = 'high';
-  outCtx.drawImage(canvas, 0, 0, outW, outH);
-
-  const dataUrl = outCanvas.toDataURL('image/png');
+  const dataUrl = canvas.toDataURL('image/png');
   cache.set(emblem, dataUrl);
   return dataUrl;
 }
