@@ -128,7 +128,7 @@ function updateCounts(count) {
 }
 
 function fetchStats() {
-    fetch(`${props.zekBrowserApi}/stats`)
+    fetch(`${props.zekBrowserApi}stats`)
         .then((response) => response.json())
         .then((data) => {
             chartOptions.value.series = [
