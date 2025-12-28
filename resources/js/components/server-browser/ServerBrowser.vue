@@ -44,10 +44,6 @@ const columns: ColumnDef<ElDewritoServer>[] = [
         },
         cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [
             h('span', { class: 'font-bold!' }, row.getValue('name')),
-            h(ModsCard, {
-                mods: row.original.mods,
-                jsonUrl: `http://${row.original.ip}/mods`,
-            }),
         ]),
     },
     {
@@ -68,6 +64,24 @@ const columns: ColumnDef<ElDewritoServer>[] = [
         },
         accessorFn: (row) => row.statusFormatted(),
         cell: ({ row }) => row.original.statusFormatted(),
+    },
+    {
+        accessorKey: 'mods',
+        header: ({ column }) => {
+            return h(Button, {
+                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+            }, () => ['Mods', h(ArrowUpDown, { size: 14 })])
+        },
+        accessorFn: (row) => row.mods?.length ?? 0,
+        cell: ({ row }) => {
+            const mods = row.original.mods;
+            if (!mods || mods.length === 0) return null;
+            return h(ModsCard, {
+                mods: mods,
+                jsonUrl: `http://${row.original.ip}/mods`,
+                showAsNumber: true,
+            });
+        },
     },
     {
         accessorKey: 'numPlayers',

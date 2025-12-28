@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 interface Props {
     mods?: object[];
     jsonUrl?: string;
+    showAsNumber?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -28,9 +29,10 @@ const size = (bytes) => {
 <template>
     <HoverCard v-if="mods?.length > 0">
         <HoverCardTrigger as-child>
-            <Package :size="18" class="ml-2 inline opacity-40 hover:opacity-60"/>
+            <Package v-if="!showAsNumber" :size="18" class="ml-2 inline opacity-40 hover:opacity-60"/>
+            <span v-else class="cursor-default hover:opacity-80">{{ mods.length }}</span>
         </HoverCardTrigger>
-        <HoverCardContent class="w-90 p-0 bg-background/80 dark:bg-background/90 backdrop-blur-xs">
+        <HoverCardContent class="w-90 p-0 bg-background/100 dark:bg-background/100 backdrop-blur-xs">
             <ScrollArea class="h-48 w-full">
                 <div class="p-4">
                     <h4 class="mb-4 text-foreground has-text-weight-semibold">
