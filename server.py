@@ -388,4 +388,4 @@ async def get_historical_stats():
 
 if __name__ == "__main__":
     # In production, you would run this via command line: uvicorn server:app --host 0.0.0.0 --port 80
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
