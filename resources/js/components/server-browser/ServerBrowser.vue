@@ -110,10 +110,10 @@ const columns: ColumnDef<ElDewritoServer>[] = [
                             href: `http://${server.ip}`,
                             target: '_blank',
                             title: `View JSON info`,
-                            class: 'ml-1 inline-flex items-start',
+                            class: 'ml-1 inline-flex items-center',
                         }, h(ExternalLink, {
                             size: 16,
-                            class: 'inline-block translate-y-[-0.25em]',
+                            class: 'inline-block',
                         }),
                     ),
                 ]
