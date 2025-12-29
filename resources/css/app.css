@@ -164,6 +164,12 @@
     body {
         @apply bg-background text-foreground;
     }
+    html {
+        @apply bg-background;
+    }
+    html, body {
+        min-height: 100vh;
+    }
 }
 
 /* Highcharts light mode (default) */
