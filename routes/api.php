@@ -1,5 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\StatsController;
+use App\Http\Controllers\Api\ProxyController;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/api/stats', [StatsController::class, 'index']);
+Route::get('/', [ProxyController::class, 'index']);
+Route::get('/stats', [ProxyController::class, 'stats']);
