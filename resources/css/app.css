@@ -165,3 +165,66 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Highcharts light mode (default) */
+.highcharts-background {
+    fill: #ffffff !important;
+}
+
+.highcharts-axis-line,
+.highcharts-tick {
+    stroke: #ccd6eb !important;
+}
+
+.highcharts-axis-title,
+.highcharts-axis-labels text {
+    fill: #666666 !important;
+}
+
+.highcharts-grid-line {
+    stroke: #e6e6e6 !important;
+}
+
+.highcharts-series-0 {
+    stroke: #2caffe !important;
+}
+
+.highcharts-series-1 {
+    stroke: #544fc5 !important;
+}
+
+/* Highcharts dark mode */
+.dark .highcharts-background {
+    fill: #14161a !important;
+}
+
+.dark .highcharts-axis-line,
+.dark .highcharts-tick {
+    stroke: #505053 !important;
+}
+
+.dark .highcharts-axis-title,
+.dark .highcharts-axis-labels text {
+    fill: #cccccc !important;
+}
+
+.dark .highcharts-grid-line {
+    stroke: #404043 !important;
+}
+
+.dark .highcharts-series-0 {
+    stroke: #2caffe !important;
+}
+
+.dark .highcharts-series-1 {
+    stroke: #00e272 !important;
+}
+
+.dark .highcharts-tooltip-box {
+    fill: #2a2a2b !important;
+    stroke: #505053 !important;
+}
+
+.dark .highcharts-label text {
+    fill: #cccccc !important;
+}

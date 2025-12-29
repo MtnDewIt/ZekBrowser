@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ServerBrowser from '@/components/server-browser/ServerBrowser.vue';
+import ThemeToggle from '@/components/ThemeToggle.vue';
 import { ValidationError } from '@/exceptions/ValidationError';
 import { ElDewritoServer } from '@/models/ElDewritoServer';
 import { Head } from '@inertiajs/vue3';
@@ -174,7 +175,10 @@ onMounted(async () => {
 
     <section class="section">
         <div class="container">
-            <h1 class="title is-2">ZekBrowser</h1>
+            <div class="header-container">
+                <h1 class="title is-2">ZekBrowser</h1>
+                <ThemeToggle />
+            </div>
             <p class="subtitle is-spaced">{{ browserStatus }}</p>
 
             <div class="table-container">
@@ -190,14 +194,35 @@ onMounted(async () => {
 
 </template>
 
+<style scoped>
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+</style>
+
 <style>
 :root {
     --background: var(--bulma-body-background-color);
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --highcharts-background-color: #14161a;
-    }
+/* Bulma dark mode overrides */
+:global(.dark) {
+    --bulma-body-background-color: #0a0a0a;
+    --bulma-body-color: #f5f5f5;
+    --bulma-text-strong: #f5f5f5;
+    --bulma-title-color: #f5f5f5;
+    --bulma-subtitle-color: #b5b5b5;
+}
+
+:global(.dark) .section {
+    background-color: #0a0a0a;
+}
+
+:global(.dark) .title,
+:global(.dark) .subtitle {
+    color: #f5f5f5;
 }
 </style>

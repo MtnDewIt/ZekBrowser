@@ -1,23 +1,24 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark']) data-theme="{{ ($appearance ?? 'system') == 'dark' ? 'dark' : 'light' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-
+        
+        <!-- Must execute before any rendering -->
         <script>
             (function() {
-                const appearance = '{{ $appearance ?? "system" }}';
-
-                if (appearance === 'system') {
-                    const root = document.documentElement;
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-                    if (prefersDark) {
-                        root.classList.add('dark');
-                        root.setAttribute('data-theme', 'dark');
-                    } else {
-                        root.setAttribute('data-theme', 'light');
-                    }
+                const appearance = '{{ $appearance ?? "light" }}';
+                const root = document.documentElement;
+                
+                // Store for Vue
+                window.__INITIAL_APPEARANCE__ = appearance;
+                
+                if (appearance === 'dark') {
+                    root.classList.add('dark');
+                    root.setAttribute('data-theme', 'dark');
+                } else {
+                    root.classList.remove('dark');
+                    root.setAttribute('data-theme', 'light');
                 }
             })();
         </script>

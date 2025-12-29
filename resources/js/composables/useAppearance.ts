@@ -1,20 +1,16 @@
 import { onMounted, ref } from 'vue';
 
-type Appearance = 'light' | 'dark' | 'system';
+type Appearance = 'light' | 'dark';
 
 export function updateTheme(value: Appearance) {
     if (typeof window === 'undefined') {
         return;
     }
 
-    if (value === 'system') {
-        const mediaQueryList = window.matchMedia('(prefers-color-scheme: dark)');
-        const systemTheme = mediaQueryList.matches ? 'dark' : 'light';
-
-        document.documentElement.classList.toggle('dark', systemTheme === 'dark');
-    } else {
-        document.documentElement.classList.toggle('dark', value === 'dark');
-    }
+    const isDark = value === 'dark';
+    
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
 }
 
 const setCookie = (name: string, value: string, days = 365) => {
@@ -23,65 +19,23 @@ const setCookie = (name: string, value: string, days = 365) => {
     }
 
     const maxAge = days * 24 * 60 * 60;
-
+    
     document.cookie = `${name}=${value};path=/;max-age=${maxAge};SameSite=Lax`;
 };
 
-const mediaQuery = () => {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    return window.matchMedia('(prefers-color-scheme: dark)');
-};
-
-const getStoredAppearance = () => {
-    if (typeof window === 'undefined') {
-        return null;
-    }
-
-    return localStorage.getItem('appearance') as Appearance | null;
-};
-
-const handleSystemThemeChange = () => {
-    const currentAppearance = getStoredAppearance();
-
-    updateTheme(currentAppearance || 'system');
-};
-
-export function initializeTheme() {
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    // Initialize theme from saved preference or default to system...
-    const savedAppearance = getStoredAppearance();
-    updateTheme(savedAppearance || 'system');
-
-    // Set up system theme change listener...
-    mediaQuery()?.addEventListener('change', handleSystemThemeChange);
-}
-
-const appearance = ref<Appearance>('system');
+const appearance = ref<Appearance>('light');
 
 export function useAppearance() {
     onMounted(() => {
-        const savedAppearance = localStorage.getItem('appearance') as Appearance | null;
-
-        if (savedAppearance) {
-            appearance.value = savedAppearance;
+        // Read initial appearance from server
+        if (typeof window !== 'undefined' && (window as any).__INITIAL_APPEARANCE__) {
+            appearance.value = (window as any).__INITIAL_APPEARANCE__ as Appearance;
         }
     });
 
     function updateAppearance(value: Appearance) {
         appearance.value = value;
-
-        // Store in localStorage for client-side persistence...
-        localStorage.setItem('appearance', value);
-
-        // Store in cookie for SSR...
         setCookie('appearance', value);
-
         updateTheme(value);
     }
 
