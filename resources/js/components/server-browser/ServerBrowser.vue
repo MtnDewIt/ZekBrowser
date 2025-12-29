@@ -76,6 +76,7 @@ const columns: ColumnDef<ElDewritoServer>[] = [
                 maxPlayers: server.maxPlayers,
                 players: server.players,
                 teams: server.teams,
+                serverVersion: server.eldewritoVersionShort ?? server.eldewritoVersion ?? '',
             });
         },
     },

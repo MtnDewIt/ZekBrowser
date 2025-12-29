@@ -8,6 +8,7 @@ interface Props {
     maxPlayers: number;
     players?: any[];
     teams?: boolean | string | number;
+    serverVersion?: string;
 }
 
 const props = defineProps<Props>();
@@ -62,6 +63,18 @@ const teamsEnabled = computed(() => {
     return v === true || v === 'true' || v === 1 || v === '1';
 });
 
+// Determine whether server is old (0.5.1.1). Prefer explicit prop, fall back to player fields.
+const serverVersionProp = computed(() => String(props.serverVersion ?? '').trim());
+const isOldServerVersion = computed(() => {
+    if (serverVersionProp.value === '0.5.1.1') return true;
+    if (!props.players || !Array.isArray(props.players)) return false;
+    for (const p of props.players) {
+        const v = p?.eldewritoVersionShort ?? p?.eldewritoVersion ?? p?.gameVersion ?? null;
+        if (v === '0.5.1.1') return true;
+    }
+    return false;
+});
+
 function textColorForBackground(color: string) {
     try {
         let r = 0, g = 0, b = 0;
@@ -113,7 +126,10 @@ function resolvePlayerColor(p: any) {
     catch {}
 
     const v = p?.primaryColor ?? p?.primary_color ?? p?.color ?? p?.colorPrimary ?? p?.primaryColour ?? p?.primary_colour ?? null;
-    if (!v) return 'transparent';
+    if (!v) {
+        if (isOldServerVersion.value) return '#424242';
+        return 'transparent';
+    }
     if (Array.isArray(v) && v.length >= 3) return `rgb(${v[0]}, ${v[1]}, ${v[2]})`;
     if (typeof v === 'object' && v !== null && v.r !== undefined) return `rgb(${v.r}, ${v.g ?? 0}, ${v.b ?? 0})`;
     if (typeof v === 'string') {
