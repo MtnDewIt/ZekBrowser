@@ -7,7 +7,7 @@ import { Head } from '@inertiajs/vue3';
 import 'bulma/css/bulma.min.css';
 import 'highcharts/css/highcharts.css';
 import { Chart } from 'highcharts-vue';
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 interface Props {
     zekBrowserApi: string;
@@ -98,7 +98,7 @@ function fetchZekBrowser() {
                 });
             });
 
-            serverArray.value = [];
+            servers.value = [];
             serverArray.forEach((serverData) => {
                 try {
                     const server = new ElDewritoServer(serverData);
@@ -159,9 +159,24 @@ function fetchStats() {
         });
 }
 
+const REFRESH_INTERVAL = 15000; // 30 seconds
+let refreshTimer: number | null = null;
+
 onMounted(async () => {
     fetchZekBrowser();
     fetchStats();
+    
+    // Set up auto-refresh every 30 seconds
+    refreshTimer = window.setInterval(() => {
+        fetchZekBrowser();
+    }, REFRESH_INTERVAL);
+});
+
+onUnmounted(() => {
+    // Clean up the timer when component is destroyed
+    if (refreshTimer !== null) {
+        clearInterval(refreshTimer);
+    }
 });
 </script>
 
