@@ -21,6 +21,10 @@ async function ensureEmblem(emblem: string | null | undefined) {
     if (emblemCache.has(emblem)) return;
     emblemCache.set(emblem, '');
     try {
+        if (typeof emblem === 'string' && (emblem.startsWith('data:') || emblem.startsWith('http://') || emblem.startsWith('https://') || emblem.startsWith('/'))) {
+            emblemCache.set(emblem, emblem);
+            return;
+        }
         const url = await generateEmblem(emblem);
         emblemCache.set(emblem, url);
     }
@@ -29,6 +33,10 @@ async function ensureEmblem(emblem: string | null | undefined) {
 function getEmblemSrc(emblem: string | null | undefined) {
     if (!emblem) return '';
     return emblemCache.get(emblem) ?? '';
+}
+function getDisplayEmblemSrc(emblem: string | null | undefined) {
+    const src = getEmblemSrc(emblem);
+    return src || '/assets/emblems/default.png';
 }
 function getEmblemString(p: any) {
     if (typeof p !== 'object' || p === null) return null;
@@ -238,7 +246,7 @@ const groupedPlayers = computed(() => {
                                         <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
                                             <div class="row-inner w-full">
                                                 <div class="flex items-center space-x-[6px]">
-                                                    <img v-if="emblemStr && getEmblemSrc(emblemStr)" :src="getEmblemSrc(emblemStr)" class="flex-shrink-0" alt="emblem" width="20" height="20" decoding="async" style="width:20px;height:20px;object-fit:contain" />
+                                                    <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                                 </div>
                                                 <div class="flex-1 px-1 flex items-center">
                                                     <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
@@ -263,7 +271,7 @@ const groupedPlayers = computed(() => {
                                     <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
                                         <div class="row-inner w-full">
                                             <div class="flex items-center space-x-[6px]">
-                                                <img v-if="emblemStr && getEmblemSrc(emblemStr)" :src="getEmblemSrc(emblemStr)" class="flex-shrink-0" alt="emblem" width="20" height="20" decoding="async" style="width:20px;height:20px;object-fit:contain" />
+                                                <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                             </div>
                                                 <div class="flex-1 px-1 flex items-center">
                                                 <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
