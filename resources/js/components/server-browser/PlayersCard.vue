@@ -2,6 +2,7 @@
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import generateEmblem from '@/lib/emblemGenerator';
 import { reactive, computed } from 'vue';
+import '../../../css/PlayersCard.css';
 
 interface Props {
     numPlayers: number;
@@ -76,38 +77,8 @@ const isOldServerVersion = computed(() => {
 });
 
 function textColorForBackground(color: string) {
-    try {
-        let r = 0, g = 0, b = 0;
-        if (!color) return 'black';
-        if (color.startsWith('#')) {
-            const hex = color.slice(1);
-            if (hex.length === 3) {
-                r = parseInt(hex[0] + hex[0], 16);
-                g = parseInt(hex[1] + hex[1], 16);
-                b = parseInt(hex[2] + hex[2], 16);
-            } else if (hex.length === 6) {
-                r = parseInt(hex.substring(0,2), 16);
-                g = parseInt(hex.substring(2,4), 16);
-                b = parseInt(hex.substring(4,6), 16);
-            }
-        }
-        else if (color.startsWith('rgb')) {
-            const m = color.match(/\d+/g);
-            if (m && m.length >= 3) {
-                r = parseInt(m[0], 10);
-                g = parseInt(m[1], 10);
-                b = parseInt(m[2], 10);
-            }
-        }
-        else {
-            return 'black';
-        }
-        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-        return lum < 0.5 ? '#ffffff' : '#000000';
-    }
-    catch {
-        return 'black';
-    }
+    // Always use white text for player entries to ensure readability
+    return '#ffffff';
 }
 
 function resolvePlayerColor(p: any) {
@@ -126,10 +97,7 @@ function resolvePlayerColor(p: any) {
     catch {}
 
     const v = p?.primaryColor ?? p?.primary_color ?? p?.color ?? p?.colorPrimary ?? p?.primaryColour ?? p?.primary_colour ?? null;
-    if (!v) {
-        if (isOldServerVersion.value) return '#424242';
-        return 'transparent';
-    }
+    if (!v) return '#424242';
     if (Array.isArray(v) && v.length >= 3) return `rgb(${v[0]}, ${v[1]}, ${v[2]})`;
     if (typeof v === 'object' && v !== null && v.r !== undefined) return `rgb(${v.r}, ${v.g ?? 0}, ${v.b ?? 0})`;
     if (typeof v === 'string') {
@@ -245,19 +213,6 @@ const groupedPlayers = computed(() => {
 
     return arr;
 });
-
-// Debug logging to help verify grouping at runtime
-try {
-    // eslint-disable-next-line no-console
-    console.log('PlayersCard debug:', {
-        teamsEnabled: teamsEnabled.value,
-        processedPlayers: processedPlayers.value,
-        groupedPlayers: groupedPlayers.value,
-    });
-}
-catch (e) {
-    // ignore
-}
 </script>
 
 <template>
@@ -271,25 +226,25 @@ catch (e) {
             </div>
             <div v-else>
                 <h4 class="mb-4 text-foreground has-text-weight-semibold">Players</h4>
-                <div class="text-sm">
+                <div class="text-base">
                     <template v-if="teamsEnabled">
                         <div v-for="group in groupedPlayers" :key="group.team ?? 'none'" class="mb-2">
-                            <div v-if="group.team !== null" class="mb-1 text-xs font-semibold">
-                                <span :style="{ backgroundColor: TEAM_COLORS[group.team], color: textColorForBackground(TEAM_COLORS[group.team] || '#fff'), padding: '2px 6px', borderRadius: '0' }">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }} ({{ group.players.length }})</span>
+                                <div v-if="group.team !== null" class="mb-1 text-xs font-semibold">
+                                <span class="player-label team-label" :style="{ '--team-bg': TEAM_COLORS[group.team], '--team-fg': textColorForBackground(TEAM_COLORS[group.team] || '#fff') }">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }} ({{ group.players.length }})</span>
                             </div>
-                            <ul class="list-none p-0" :style="{ display: 'flex', flexDirection: 'column', rowGap: '2px' }">
-                                <li v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="block text-sm m-0 p-0">
+                            <ul class="players-list">
+                                <li v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="block text-base m-0 p-0">
                                     <template v-if="typeof p === 'object' && p !== null">
-                                        <div class="w-full overflow-hidden" :style="{ backgroundColor: resolvePlayerColor(p), height: '32px' }">
-                                            <div class="h-full w-full flex items-center px-1">
+                                        <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
+                                            <div class="row-inner w-full">
                                                 <div class="flex items-center space-x-[6px]">
                                                     <img v-if="emblemStr && getEmblemSrc(emblemStr)" :src="getEmblemSrc(emblemStr)" class="flex-shrink-0" alt="emblem" width="20" height="20" decoding="async" style="width:20px;height:20px;object-fit:contain" />
                                                 </div>
-                                                <div class="flex-1 px-1">
-                                                    <span class="font-semibold truncate block text-sm" :style="{ color: textColorForBackground(resolvePlayerColor(p)) }">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
+                                                <div class="flex-1 px-1 flex items-center">
+                                                    <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
                                                 </div>
-                                                <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1">
-                                                    <span :style="{ color: textColorForBackground(resolvePlayerColor(p)) }">[{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}]</span>
+                                                <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
+                                                    <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -302,19 +257,19 @@ catch (e) {
                         </div>
                     </template>
                     <template v-else>
-                        <ul class="list-none p-0" :style="{ display: 'flex', flexDirection: 'column', rowGap: '2px' }">
-                            <li v-for="({ player: p, emblemStr }, index) in sortedPlayers" :key="index" class="block text-sm m-0 p-0">
+                        <ul class="players-list">
+                            <li v-for="({ player: p, emblemStr }, index) in sortedPlayers" :key="index" class="block text-base m-0 p-0">
                                 <template v-if="typeof p === 'object' && p !== null">
-                                    <div class="w-full overflow-hidden" :style="{ backgroundColor: resolvePlayerColor(p), height: '32px' }">
-                                        <div class="h-full w-full flex items-center px-1">
+                                    <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
+                                        <div class="row-inner w-full">
                                             <div class="flex items-center space-x-[6px]">
                                                 <img v-if="emblemStr && getEmblemSrc(emblemStr)" :src="getEmblemSrc(emblemStr)" class="flex-shrink-0" alt="emblem" width="20" height="20" decoding="async" style="width:20px;height:20px;object-fit:contain" />
                                             </div>
-                                            <div class="flex-1 px-1">
-                                                <span class="font-semibold truncate block text-sm" :style="{ color: textColorForBackground(resolvePlayerColor(p)) }">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
+                                                <div class="flex-1 px-1 flex items-center">
+                                                <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
                                             </div>
-                                            <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1">
-                                                <span :style="{ color: textColorForBackground(resolvePlayerColor(p)) }">[{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}]</span>
+                                            <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
+                                                <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
                                             </div>
                                         </div>
                                     </div>
