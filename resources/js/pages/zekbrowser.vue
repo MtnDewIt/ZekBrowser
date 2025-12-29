@@ -181,9 +181,7 @@ onMounted(async () => {
             </div>
             <p class="subtitle is-spaced">{{ browserStatus }}</p>
 
-            <div class="table-container">
-                <ServerBrowser v-if="showBrowser" :servers="servers" />
-            </div>
+            <ServerBrowser v-if="showBrowser" :servers="servers" />
 
             <h2 class="title is-3">Stats</h2>
             <p class="subtitle">{{ statsStatus }}</p>
