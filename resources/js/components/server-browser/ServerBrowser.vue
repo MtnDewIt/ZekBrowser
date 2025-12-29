@@ -69,12 +69,13 @@ const columns: ColumnDef<ElDewritoServer>[] = [
                 onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
             }, () => ['Players', h(ArrowUpDown, { size: 14 })])
         },
-        cell: ({ row }) => {
+            cell: ({ row }) => {
             const server: ElDewritoServer = row.original;
             return h(PlayersCard, {
                 numPlayers: server.numPlayers,
                 maxPlayers: server.maxPlayers,
                 players: server.players,
+                teams: server.teams,
             });
         },
     },
