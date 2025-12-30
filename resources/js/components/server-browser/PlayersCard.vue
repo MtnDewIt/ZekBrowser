@@ -242,9 +242,7 @@ const groupedPlayers = computed(() => {
                                     <template v-if="typeof p === 'object' && p !== null">
                                         <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
                                             <div class="row-inner w-full">
-                                                <div class="flex items-center space-x-[6px]">
-                                                    <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
-                                                </div>
+                                                <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                                 <div class="flex-1 px-1 flex items-center">
                                                     <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
                                                 </div>
@@ -267,9 +265,7 @@ const groupedPlayers = computed(() => {
                                 <template v-if="typeof p === 'object' && p !== null">
                                     <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
                                         <div class="row-inner w-full">
-                                            <div class="flex items-center space-x-[6px]">
-                                                <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
-                                            </div>
+                                            <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                             <div class="flex-1 px-1 flex items-center">
                                                 <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
                                             </div>
