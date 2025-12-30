@@ -6,6 +6,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import '../../../css/ModsCard.css';
 
 interface Props {
     mods?: object[];
@@ -33,20 +34,24 @@ const size = (bytes) => {
             <span v-else class="cursor-default hover:opacity-80">{{ mods.length }}</span>
         </HoverCardTrigger>
         <HoverCardContent class="w-90 p-0 bg-background/100 dark:bg-background/100 backdrop-blur-xs">
-            <ScrollArea class="h-48 w-full">
-                <div class="p-4">
+            <ScrollArea class="h-64 w-full">
+                <div class="p-4 mods-card">
                     <h4 class="mb-4 text-foreground has-text-weight-semibold">
                         Mod Packs
                     </h4>
 
-                    <div v-for="mod in mods" :key="mod.id">
+                    <div v-for="mod in mods" :key="mod.id" class="mod-entry">
                         <div class="flex justify-between text-sm items-center">
                             <div>
-                                {{ mod.mod_name }}
+                                <div class="flex items-baseline gap-2">
+                                    <span class="font-medium mod-name">{{ mod.mod_name }}</span>
+                                    <span v-if="mod.mod_version" class="mod-version">v{{ mod.mod_version }}</span>
+                                </div>
 
-                                <span v-if="mod.mod_version" class="ml-1 text-xs opacity-50">
-                                    v{{ mod.mod_version }}
-                                </span>
+                                <div v-if="mod.mod_author" class="text-xs opacity-60 mod-author">by {{ mod.mod_author }}</div>
+                                <div v-if="mod.mod_website" class="text-xs mt-1 mod-website">
+                                    <a :href="mod.mod_website" target="_blank" rel="noopener noreferrer" class="text-muted-foreground! hover:underline! truncate block" :title="mod.mod_website">{{ mod.mod_website }}</a>
+                                </div>
                             </div>
 
                             <Button
