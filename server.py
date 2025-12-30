@@ -10,7 +10,7 @@ from typing import Dict, List, Set, Any, Optional
 
 import httpx
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 # --- Configuration ---
@@ -383,6 +383,31 @@ async def get_historical_stats():
     """Serve historical stats data for charting."""
     stats = get_stats_history()
     return stats
+
+
+@app.get("/api/servicerecord")
+async def get_service_record(uid: Optional[str] = None):
+    """GET proxy: accept ?uid=... from address bar and forward to eldewrito API."""
+    try:
+        if not uid:
+            return JSONResponse(status_code=400, content={"error": "Missing or invalid uid"})
+
+        async with httpx.AsyncClient() as client:
+            headers = {"Content-Type": "application/json", "User-Agent": "ElDewrito/0.7.1"}
+            resp = await client.post("https://api.eldewrito.org/api/servicerecord", json={"uid": uid}, headers=headers, timeout=API_TIMEOUT)
+
+            try:
+                content = resp.json()
+            except Exception:
+                content = resp.text
+
+            return JSONResponse(status_code=resp.status_code, content=content)
+    except Exception as e:
+        logger.exception("Error proxying GET service record request")
+        return JSONResponse(status_code=503, content={"error": "Failed to fetch service record", "message": str(e)})
+
+
+# Path-based handler removed — use query string: /api/servicerecord?uid=...
 
 # --- Entry Point ---
 

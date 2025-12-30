@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 class ProxyController extends Controller
@@ -39,6 +40,35 @@ class ProxyController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to fetch stats data',
+                'message' => $e->getMessage()
+            ], 503);
+        }
+    }
+
+    public function serviceRecord(Request $request)
+    {
+        $json = [];
+        try {
+            $json = $request->json()->all();
+        } catch (\Exception $e) {
+            $json = [];
+        }
+
+        // Accept uid from query string or JSON body
+        $uid = $request->query('uid') ?? ($json['uid'] ?? null);
+
+        if (!isset($uid) || !is_string($uid) || $uid === '') {
+            return response()->json(['error' => 'Missing or invalid uid'], 400);
+        }
+
+        try {
+            $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/servicerecord", ['uid' => $uid]);
+
+            return response($response->body(), $response->status())
+                ->header('Content-Type', 'application/json');
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch service record',
                 'message' => $e->getMessage()
             ], 503);
         }
