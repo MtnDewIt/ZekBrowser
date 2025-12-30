@@ -192,10 +192,12 @@ onUnmounted(() => {
     <section class="section">
         <div class="container">
             <div class="header-container">
-                <h1 class="title is-2">ZekBrowser</h1>
+                <div class="header-left">
+                    <h1 class="title is-2">ZekBrowser</h1>
+                    <p class="subtitle is-spaced">{{ browserStatus }}</p>
+                </div>
                 <ThemeToggle />
             </div>
-            <p class="subtitle is-spaced">{{ browserStatus }}</p>
 
             <ServerBrowser v-if="showBrowser" :servers="servers" />
 
@@ -214,6 +216,11 @@ onUnmounted(() => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
+}
+
+.header-left {
+    display: flex;
+    flex-direction: column;
 }
 </style>
 
