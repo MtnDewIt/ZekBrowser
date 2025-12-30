@@ -10,9 +10,11 @@ interface Props {
     players?: any[];
     teams?: boolean | string | number;
     serverVersion?: string;
+    passworded?: boolean;
 }
 
 const props = defineProps<Props>();
+const passworded = computed(() => !!props.passworded);
 
 // Emblem cache
 const emblemCache = reactive(new Map<string, string>());
@@ -232,19 +234,46 @@ const groupedPlayers = computed(() => {
             <HoverCardContent class="bg-background/100 dark:bg-background/100 backdrop-blur-xs">
                 <h4 class="mb-4 text-foreground has-text-weight-semibold">Players</h4>
                 <div class="text-base">
-                    <template v-if="teamsEnabled">
-                        <div v-for="group in groupedPlayers" :key="group.team ?? 'none'" class="mb-2">
-                            <div v-if="group.team !== null" class="mb-1 text-xs font-semibold">
-                                <span class="player-label team-label" :style="{ '--team-bg': TEAM_COLORS[group.team], '--team-fg': textColorForBackground(TEAM_COLORS[group.team] || '#fff') }">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }} ({{ group.players.length }})</span>
+                    <template v-if="passworded">
+                        <div class="text-sm text-muted-foreground">Private Server</div>
+                    </template>
+                    <template v-else>
+                        <template v-if="teamsEnabled">
+                            <div v-for="group in groupedPlayers" :key="group.team ?? 'none'" class="mb-2">
+                                <div v-if="group.team !== null" class="mb-1 text-xs font-semibold">
+                                    <span class="player-label team-label" :style="{ '--team-bg': TEAM_COLORS[group.team], '--team-fg': textColorForBackground(TEAM_COLORS[group.team] || '#fff') }">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }} ({{ group.players.length }})</span>
+                                </div>
+                                <ul class="players-list">
+                                    <li v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="block text-base m-0 p-0">
+                                        <template v-if="typeof p === 'object' && p !== null">
+                                            <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
+                                                <div class="row-inner w-full">
+                                                    <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
+                                                    <div class="flex-1 px-1 flex items-center">
+                                                        <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
+                                                    </div>
+                                                    <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
+                                                        <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <template v-else>
+                                            <span class="truncate">{{ p }}</span>
+                                        </template>
+                                    </li>
+                                </ul>
                             </div>
+                        </template>
+                        <template v-else>
                             <ul class="players-list">
-                                <li v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="block text-base m-0 p-0">
+                                <li v-for="({ player: p, emblemStr }, index) in sortedPlayers" :key="index" class="block text-base m-0 p-0">
                                     <template v-if="typeof p === 'object' && p !== null">
                                         <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
                                             <div class="row-inner w-full">
                                                 <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                                 <div class="flex-1 px-1 flex items-center">
-                                                    <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
+                                                    <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
                                                 </div>
                                                 <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
                                                     <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
@@ -257,29 +286,7 @@ const groupedPlayers = computed(() => {
                                     </template>
                                 </li>
                             </ul>
-                        </div>
-                    </template>
-                    <template v-else>
-                        <ul class="players-list">
-                            <li v-for="({ player: p, emblemStr }, index) in sortedPlayers" :key="index" class="block text-base m-0 p-0">
-                                <template v-if="typeof p === 'object' && p !== null">
-                                    <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
-                                        <div class="row-inner w-full">
-                                            <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
-                                            <div class="flex-1 px-1 flex items-center">
-                                                <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
-                                            </div>
-                                            <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
-                                                <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </template>
-                                <template v-else>
-                                    <span class="truncate">{{ p }}</span>
-                                </template>
-                            </li>
-                        </ul>
+                        </template>
                     </template>
                 </div>
             </HoverCardContent>
