@@ -75,11 +75,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/* loadFirstAvailable removed — generator uses exact filenames now */
-
-async function colorPixelsOnCanvas(sourceImg: HTMLImageElement, ctx: CanvasRenderingContext2D, userColor: RGB, sampling: ColorPolicy, maxChannelValue: number, alphaBlend = true) {
+async function colorPixelsOnCanvas(sourceImg: HTMLImageElement, ctx: CanvasRenderingContext2D, userColor: RGB, sampling: ColorPolicy, maxChannelValue: number) {
   const w = sourceImg.width, h = sourceImg.height;
-  // draw and modify on a temporary canvas to avoid overwriting the main canvas before compositing
   const tmp = document.createElement('canvas');
   tmp.width = w; tmp.height = h;
   const tctx = tmp.getContext('2d');
@@ -87,29 +84,45 @@ async function colorPixelsOnCanvas(sourceImg: HTMLImageElement, ctx: CanvasRende
   tctx.clearRect(0,0,w,h);
   tctx.drawImage(sourceImg, 0, 0, w, h);
   const imgData = tctx.getImageData(0,0,w,h);
-  const data = imgData.data; // RGBA
+  const data = imgData.data;
+  
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-    const blueDominant = (b - r) > 10;
-    const evenColors = (b - r < 10) && (g - b < 10);
-    let channelValue = 0;
+    
+    if (a === 0) continue;
+    
+    // Use softer, gradient-based detection
+    const blueStrength = Math.max(0, (b - Math.min(r, g)) / 50); // 0 to 1+ range
+    const grayness = 1 - (Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(b - r)) / 50);
+    
+    let colorWeight = 0;
+    let sourceIntensity = 0;
+    
     switch (sampling) {
       case ColorPolicy.KeepEven:
-        channelValue = blueDominant ? 0 : (r / maxChannelValue);
+        // Color grayscale pixels, fade out blue pixels
+        colorWeight = Math.max(0, Math.min(1, grayness - blueStrength));
+        sourceIntensity = r / maxChannelValue;
         break;
       case ColorPolicy.KeepBlue:
-        channelValue = evenColors ? 0 : (b / maxChannelValue);
+        // Color blue pixels, fade out grayscale pixels
+        colorWeight = Math.max(0, Math.min(1, blueStrength - grayness * 0.5));
+        sourceIntensity = b / maxChannelValue;
         break;
     }
-    channelValue = Math.min(1, Math.max(0, channelValue));
-    data[i]   = Math.round(userColor.r * channelValue);
-    data[i+1] = Math.round(userColor.g * channelValue);
-    data[i+2] = Math.round(userColor.b * channelValue);
-    data[i+3] = Math.round(alphaBlend ? (255 * channelValue) : 255);
+    
+    if (colorWeight > 0.01) {
+      const intensity = Math.min(1, Math.max(0, sourceIntensity));
+      data[i]   = Math.round(userColor.r * intensity);
+      data[i+1] = Math.round(userColor.g * intensity);
+      data[i+2] = Math.round(userColor.b * intensity);
+      data[i+3] = Math.round(a * colorWeight);
+    } else {
+      data[i+3] = 0;
+    }
   }
+  
   tctx.putImageData(imgData, 0, 0);
-
-  // composite the modified temp canvas onto the target canvas
   ctx.drawImage(tmp, 0, 0);
 }
 
@@ -121,7 +134,6 @@ export default async function generateEmblem(emblem: string): Promise<string> {
 
   const data = extractEmblemData(emblem);
 
-  // create base canvas 128x128
   const baseW = 128, baseH = 128;
   const canvas = document.createElement('canvas');
   canvas.width = baseW; canvas.height = baseH;
@@ -129,11 +141,9 @@ export default async function generateEmblem(emblem: string): Promise<string> {
   if (!ctx) return '';
   ctx.clearRect(0,0,baseW,baseH);
 
-  // draw background if any
   try {
     if (data.backgroundIndex >= 0) {
       const bgPath = `${ASSET_BASE}/background/emblem_backgrounds_${String(data.backgroundIndex).padStart(2,'0')}.png`;
-      
       const bgImg = await loadImage(bgPath);
       await colorPixelsOnCanvas(bgImg, ctx, data.backgroundColor, ColorPolicy.KeepEven, 101);
     }
@@ -141,14 +151,30 @@ export default async function generateEmblem(emblem: string): Promise<string> {
     // ignore background load errors
   }
 
-  // draw foreground (primary)
   try {
     const fgPath = `${ASSET_BASE}/foreground/emblem_foregrounds_${String(data.foregroundIndex).padStart(3,'0')}.png`;
-    
     const fgImg = await loadImage(fgPath);
-    await colorPixelsOnCanvas(fgImg, ctx, data.primaryColor, ColorPolicy.KeepEven, 177);
+    
     if (data.toggleSecondary) {
-      await colorPixelsOnCanvas(fgImg, ctx, data.secondaryColor, ColorPolicy.KeepBlue, 236);
+      const primaryCanvas = document.createElement('canvas');
+      primaryCanvas.width = baseW;
+      primaryCanvas.height = baseH;
+      const primaryCtx = primaryCanvas.getContext('2d');
+      
+      const secondaryCanvas = document.createElement('canvas');
+      secondaryCanvas.width = baseW;
+      secondaryCanvas.height = baseH;
+      const secondaryCtx = secondaryCanvas.getContext('2d');
+      
+      if (primaryCtx && secondaryCtx) {
+        await colorPixelsOnCanvas(fgImg, primaryCtx, data.primaryColor, ColorPolicy.KeepEven, 177);
+        await colorPixelsOnCanvas(fgImg, secondaryCtx, data.secondaryColor, ColorPolicy.KeepBlue, 236);
+        
+        ctx.drawImage(primaryCanvas, 0, 0);
+        ctx.drawImage(secondaryCanvas, 0, 0);
+      }
+    } else {
+      await colorPixelsOnCanvas(fgImg, ctx, data.primaryColor, ColorPolicy.KeepEven, 177);
     }
   } catch (e) {
     // ignore foreground load errors
