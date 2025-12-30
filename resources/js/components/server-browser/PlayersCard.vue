@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import generateEmblem from '@/lib/emblemGenerator';
-import { reactive, computed } from 'vue';
+import { reactive, computed, ref, onMounted, watch } from 'vue';
+import { getIdForUid, findUidFromPlayer } from '@/composables/useServiceRecord';
 import '../../../css/PlayersCard.css';
 
 interface Props {
@@ -157,6 +158,49 @@ const processedPlayers = computed(() => {
     });
 });
 
+// Client-side plain object for uid -> external id (null means looked up but not available)
+const idMapRef = ref<Record<string, number | null>>({});
+
+function getPlayerUid(p: any): string | null {
+    return findUidFromPlayer(p);
+}
+
+function getPlayerIdForUid(uid: string | null): number | null | undefined {
+    if (!uid) return undefined;
+    return Object.prototype.hasOwnProperty.call(idMapRef.value, uid) ? idMapRef.value[uid] : undefined;
+}
+
+function getPlayerName(p: any) {
+    return p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p);
+}
+
+async function fetchUidsForPlayers(players: any[] | undefined) {
+    if (passworded.value) return;
+    if (!players || !Array.isArray(players)) return;
+    for (const p of players) {
+        const uid = getPlayerUid(p);
+        if (!uid) continue;
+        if (Object.prototype.hasOwnProperty.call(idMapRef.value, uid)) continue;
+        // mark as pending to avoid duplicate work
+        idMapRef.value[uid] = null;
+        try {
+            const id = await getIdForUid(uid, serverVersionProp.value);
+            idMapRef.value[uid] = id === null ? null : id;
+        }
+        catch {
+            idMapRef.value[uid] = null;
+        }
+    }
+}
+
+onMounted(() => {
+    void fetchUidsForPlayers(props.players);
+});
+
+watch(() => props.players, (newVal) => {
+    void fetchUidsForPlayers(newVal as any[]);
+}, { deep: true });
+
 // Sorted flat list when teams are not enabled
 const sortedPlayers = computed(() => {
     const items = processedPlayers.value.slice();
@@ -250,7 +294,12 @@ const groupedPlayers = computed(() => {
                                                 <div class="row-inner w-full">
                                                     <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                                     <div class="flex-1 px-1 flex items-center">
-                                                        <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
+                                                        <template v-if="getPlayerUid(p) && getPlayerIdForUid(getPlayerUid(p)) != null">
+                                                            <a :href="`https://stats.eldewrito.org/player/${getPlayerIdForUid(getPlayerUid(p))}`" target="_blank" rel="noopener noreferrer" class="font-semibold truncate text-base player-label">{{ getPlayerName(p) }}</a>
+                                                        </template>
+                                                        <template v-else>
+                                                            <span class="font-semibold truncate text-base player-label">{{ getPlayerName(p) }}</span>
+                                                        </template>
                                                     </div>
                                                     <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
                                                         <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
@@ -273,7 +322,12 @@ const groupedPlayers = computed(() => {
                                             <div class="row-inner w-full">
                                                 <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                                 <div class="flex-1 px-1 flex items-center">
-                                                    <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
+                                                    <template v-if="getPlayerUid(p) && getPlayerIdForUid(getPlayerUid(p)) != null">
+                                                        <a :href="`https://stats.eldewrito.org/player/${getPlayerIdForUid(getPlayerUid(p))}`" target="_blank" rel="noopener noreferrer" class="font-semibold truncate text-base player-label">{{ getPlayerName(p) }}</a>
+                                                    </template>
+                                                    <template v-else>
+                                                        <span class="font-semibold truncate text-base player-label">{{ getPlayerName(p) }}</span>
+                                                    </template>
                                                 </div>
                                                 <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
                                                     <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
