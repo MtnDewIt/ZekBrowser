@@ -6,6 +6,8 @@ import PlayersCard from '@/components/server-browser/PlayersCard.vue';
 import { Button } from '@/components/ui/button';
 // Removed icon imports; using static masked SVGs
 import { h } from 'vue';
+import type { ColumnDef } from '@tanstack/vue-table';
+// Note: we avoid typing `SortingFn` to keep imports minimal; function signature matches TanStack.
 
 interface Props {
     servers: ElDewritoServer[];
@@ -13,14 +15,27 @@ interface Props {
 
 defineProps<Props>();
 
-// Shared sort icon helper to avoid duplication
-const SORT_ICON_CLASSES = 'icon-mask icon-sort inline-block w-3.5 h-3.5 ml-2 align-middle opacity-70';
-const renderSortIcon = () => h('span', { class: SORT_ICON_CLASSES, ariaHidden: 'true' });
-const makeSortHeader = (label: string, buttonClass = '') => ({ column }) =>
-    h(Button, {
+// Shared sort icon helpers to avoid duplication and reflect sort state
+const SORT_ICON_BASE = 'icon-mask inline-block w-3.5 h-3.5 ml-2 align-middle opacity-70';
+const renderSortIcon = (state: false | 'asc' | 'desc') => {
+    const variant = state === 'asc' ? 'icon-sort-up' : state === 'desc' ? 'icon-sort-down' : 'icon-sort';
+    return h('span', { class: `${SORT_ICON_BASE} ${variant}`, ariaHidden: 'true' });
+};
+const makeSortHeader = (label: string, buttonClass = '') => ({ column }) => {
+    const state = column.getIsSorted();
+    return h(Button, {
         class: ['gap-0', buttonClass].filter(Boolean).join(' '),
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-    }, () => [label, renderSortIcon()]);
+    }, () => [label, renderSortIcon(state)]);
+};
+
+// Locale-aware, case-insensitive, numeric-aware text sorting for string columns
+const localeTextSorting = (rowA: any, rowB: any, columnId: string) => {
+    const a = String(rowA.getValue(columnId) ?? '');
+    const b = String(rowB.getValue(columnId) ?? '');
+    // Use localeCompare with base sensitivity (case-insensitive) and numeric ordering
+    return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
+};
 
 const columns: ColumnDef<ElDewritoServer>[] = [
     {
@@ -51,6 +66,7 @@ const columns: ColumnDef<ElDewritoServer>[] = [
     {
         accessorKey: 'name',
         header: makeSortHeader('Name'),
+        sortingFn: localeTextSorting,
         cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [
             h('span', { class: 'font-bold!' }, row.getValue('name')),
         ]),
@@ -58,6 +74,7 @@ const columns: ColumnDef<ElDewritoServer>[] = [
     {
         accessorKey: 'hostPlayer',
         header: makeSortHeader('Host'),
+        sortingFn: localeTextSorting,
         cell: ({ row }) => row.getValue('hostPlayer'),
     },
     {

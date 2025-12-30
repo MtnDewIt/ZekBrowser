@@ -112,6 +112,16 @@
         -webkit-mask-image: url('/assets/icons/arrow-up-down.svg');
         mask-image: url('/assets/icons/arrow-up-down.svg');
     }
+
+    /* Directional sort icons */
+    .icon-sort-up {
+        -webkit-mask-image: url('/assets/icons/move-up.svg');
+        mask-image: url('/assets/icons/move-up.svg');
+    }
+    .icon-sort-down {
+        -webkit-mask-image: url('/assets/icons/move-down.svg');
+        mask-image: url('/assets/icons/move-down.svg');
+    }
 }
 
 :root {
