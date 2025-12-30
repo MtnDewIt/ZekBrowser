@@ -18,6 +18,9 @@ const passworded = computed(() => !!props.passworded);
 
 // Emblem cache
 const emblemCache = reactive(new Map<string, string>());
+const resolvedStats = reactive(new Map<string, string>());
+const resolvedStatsTimestamps = reactive(new Map<string, number>());
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 async function ensureEmblem(emblem: string | null | undefined) {
     if (!emblem) return;
     if (emblemCache.has(emblem)) return;
@@ -43,6 +46,141 @@ function getDisplayEmblemSrc(emblem: string | null | undefined) {
 function getEmblemString(p: any) {
     if (typeof p !== 'object' || p === null) return null;
     return p.emblem ?? p.emblemUrl ?? p.emblem_url ?? p.emblemString ?? null;
+}
+
+// Extract potential UID (hex) or numeric id from player object (simplified)
+function getCandidateUid(p: any): string | null {
+    if (!p || typeof p !== 'object') return null;
+
+    // Prefer numeric stats ID if present
+    const numericFields = [p.id, p.playerId, p.player_id, p.serviceId, p.service_id];
+    for (const n of numericFields) {
+        if (n === undefined || n === null) continue;
+        const s = String(n);
+        if (/^\d+$/.test(s)) return s;
+    }
+
+    // Prefer common uid fields for 0.7+ servers
+    const uidFields = [p.uid, p.uniqueId, p.xuid, p.serviceUid, p.service_uid];
+    for (const u of uidFields) {
+        if (!u) continue;
+        if (typeof u === 'string' && /^[0-9a-fA-F]+$/.test(u)) return u;
+    }
+
+    return null;
+}
+
+async function resolveStatsIdFromUid(uid: string): Promise<string | null> {
+    try {
+        const now = Date.now();
+        const cached = resolvedStats.get(uid);
+        const ts = resolvedStatsTimestamps.get(uid) ?? 0;
+        if (cached && (now - ts) < CACHE_TTL_MS) return cached;
+
+        const resp = await fetch(`/api/servicerecord?uid=${encodeURIComponent(uid)}`);
+        if (!resp.ok) return null;
+        const data = await resp.json();
+
+        if (!data) return null;
+        // Expect { id: 123 } or { player: { id: 123 } }
+        if (data.id && (typeof data.id === 'number' || typeof data.id === 'string')) {
+            const s = String(data.id);
+            if (/^\d+$/.test(s)) {
+                resolvedStats.set(uid, s);
+                resolvedStatsTimestamps.set(uid, Date.now());
+                return s;
+            }
+        }
+        if (data.player && data.player.id && (typeof data.player.id === 'number' || typeof data.player.id === 'string')) {
+            const s = String(data.player.id);
+            if (/^\d+$/.test(s)) {
+                resolvedStats.set(uid, s);
+                resolvedStatsTimestamps.set(uid, Date.now());
+                return s;
+            }
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+    async function preloadAllPlayers() {
+        if (!props.players || !Array.isArray(props.players)) return;
+        const items = props.players.slice();
+        const candidates: string[] = [];
+        for (const p of items) {
+            const c = getCandidateUid(p);
+            if (!c) continue;
+            if (/^\d+$/.test(c)) continue;
+            const ts = resolvedStatsTimestamps.get(c) ?? 0;
+            if (resolvedStats.has(c) && (Date.now() - ts) < CACHE_TTL_MS) continue;
+            candidates.push(c);
+        }
+
+        const CONCURRENCY = 6;
+        for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+            const batch = candidates.slice(i, i + CONCURRENCY).map(uid => resolveStatsIdFromUid(uid));
+            // Fire the batch and await to avoid rate-limiting
+            await Promise.all(batch);
+        }
+    }
+
+function getHrefForPlayer(p: any): string {
+    const candidate = getCandidateUid(p);
+    if (!candidate) return '#';
+    if (/^\d+$/.test(candidate)) return `https://stats.eldewrito.org/player/${candidate}`;
+    const resolved = resolvedStats.get(candidate);
+    if (resolved) return `https://stats.eldewrito.org/player/${resolved}`;
+    return '#';
+}
+
+async function preloadStatsHref(p: any) {
+    const candidate = getCandidateUid(p);
+    if (!candidate) return;
+    if (/^\d+$/.test(candidate)) return; // already numeric
+
+    // Only attempt resolve for 0.7+ servers
+    function getServerVersionString(): string | null {
+        const s = serverVersionProp.value;
+        if (s && s.trim() !== '') return s;
+        if (props.players && Array.isArray(props.players)) {
+            for (const pp of props.players) {
+                const v = pp?.eldewritoVersionShort ?? pp?.eldewritoVersion ?? pp?.gameVersion ?? null;
+                if (v) return String(v);
+            }
+        }
+        return null;
+    }
+
+    function isVersionAtLeast(versionStr: string | null, minMajor: number, minMinor: number): boolean {
+        if (!versionStr) return false;
+        const m = versionStr.match(/^(\d+)\.(\d+)/);
+        if (!m) return false;
+        const major = Number(m[1]);
+        const minor = Number(m[2]);
+        if (Number.isNaN(major) || Number.isNaN(minor)) return false;
+        if (major > minMajor) return true;
+        if (major < minMajor) return false;
+        return minor >= minMinor;
+    }
+
+    const serverVer = getServerVersionString();
+    if (!isVersionAtLeast(serverVer, 0, 7)) return;
+
+    if (resolvedStats.has(candidate)) return;
+    const resolved = await resolveStatsIdFromUid(candidate);
+    if (resolved) resolvedStats.set(candidate, resolved);
+}
+
+async function openStatsForPlayer(p: any) {
+    const href = getHrefForPlayer(p);
+    if (href && href !== '#') {
+        window.open(href, '_blank');
+    } else {
+        console.warn('Player stats unavailable or not supported on this server');
+    }
 }
 
 // Team colors from the user's C# code
@@ -85,6 +223,39 @@ const isOldServerVersion = computed(() => {
     }
     return false;
 });
+
+function getServerVersionString(): string | null {
+    const s = serverVersionProp.value;
+    if (s && s.trim() !== '') return s;
+    if (props.players && Array.isArray(props.players)) {
+        for (const pp of props.players) {
+            const v = pp?.eldewritoVersionShort ?? pp?.eldewritoVersion ?? pp?.gameVersion ?? null;
+            if (v) return String(v);
+        }
+    }
+    return null;
+}
+
+function isVersionAtLeast(versionStr: string | null, minMajor: number, minMinor: number): boolean {
+    if (!versionStr) return false;
+    const m = versionStr.match(/^(\d+)\.(\d+)/);
+    if (!m) return false;
+    const major = Number(m[1]);
+    const minor = Number(m[2]);
+    if (Number.isNaN(major) || Number.isNaN(minor)) return false;
+    if (major > minMajor) return true;
+    if (major < minMajor) return false;
+    return minor >= minMinor;
+}
+
+const canResolveUids = computed(() => isVersionAtLeast(getServerVersionString(), 0, 7));
+
+function isClickablePlayer(p: any): boolean {
+    // Never clickable unless server supports UID resolution (0.7+)
+    if (!canResolveUids.value) return false;
+    const candidate = getCandidateUid(p);
+    return !!candidate;
+}
 
 function textColorForBackground(color: string) {
     // Always use white text for player entries to ensure readability
@@ -228,10 +399,10 @@ const groupedPlayers = computed(() => {
 <template>
     <template v-if="numPlayers > 0">
         <HoverCard>
-            <HoverCardTrigger as-child>
-                <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
-            </HoverCardTrigger>
-            <HoverCardContent class="bg-background/100 dark:bg-background/100 backdrop-blur-xs">
+            <HoverCardTrigger as-child @mouseenter="preloadAllPlayers">
+                    <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
+                </HoverCardTrigger>
+            <HoverCardContent class="playercard-content bg-background/100 dark:bg-background/100 backdrop-blur-xs">
                 <h4 class="mb-4 text-foreground has-text-weight-semibold">Players</h4>
                 <div class="text-base">
                     <template v-if="passworded">
@@ -250,8 +421,13 @@ const groupedPlayers = computed(() => {
                                                 <div class="row-inner w-full">
                                                     <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                                     <div class="flex-1 px-1 flex items-center">
-                                                        <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
-                                                    </div>
+                                                            <template v-if="isClickablePlayer(p)">
+                                                                <a class="font-semibold truncate text-base player-label player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</a>
+                                                            </template>
+                                                            <template v-else>
+                                                                <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
+                                                            </template>
+                                                        </div>
                                                     <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
                                                         <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
                                                     </div>
@@ -273,7 +449,12 @@ const groupedPlayers = computed(() => {
                                             <div class="row-inner w-full">
                                                 <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                                 <div class="flex-1 px-1 flex items-center">
-                                                    <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
+                                                    <template v-if="isClickablePlayer(p)">
+                                                        <a class="font-semibold truncate text-base player-label player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</a>
+                                                    </template>
+                                                    <template v-else>
+                                                        <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
+                                                    </template>
                                                 </div>
                                                 <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
                                                     <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>

@@ -68,3 +68,20 @@
   display: block;
   margin-right: 6px;
 }
+
+/* Wider hover card for player list to fit more info */
+.playercard-content {
+  min-width: 420px;
+  max-width: 720px;
+  width: auto;
+}
+
+/* Clickable player name styling */
+.player-link {
+  color: #ffffff !important;
+  text-decoration: none;
+  cursor: pointer;
+}
+.player-link:hover {
+  text-decoration: underline;
+}
