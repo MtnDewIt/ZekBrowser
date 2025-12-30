@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 // Removed icon imports; using static masked SVGs
 import { h } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
-// Note: we avoid typing `SortingFn` to keep imports minimal; function signature matches TanStack.
 
 interface Props {
     servers: ElDewritoServer[];
@@ -27,14 +26,6 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }) => {
         class: ['gap-0', buttonClass].filter(Boolean).join(' '),
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
     }, () => [label, renderSortIcon(state)]);
-};
-
-// Locale-aware, case-insensitive, numeric-aware text sorting for string columns
-const localeTextSorting = (rowA: any, rowB: any, columnId: string) => {
-    const a = String(rowA.getValue(columnId) ?? '');
-    const b = String(rowB.getValue(columnId) ?? '');
-    // Use localeCompare with base sensitivity (case-insensitive) and numeric ordering
-    return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
 };
 
 const columns: ColumnDef<ElDewritoServer>[] = [
@@ -66,7 +57,6 @@ const columns: ColumnDef<ElDewritoServer>[] = [
     {
         accessorKey: 'name',
         header: makeSortHeader('Name'),
-        sortingFn: localeTextSorting,
         cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [
             h('span', { class: 'font-bold!' }, row.getValue('name')),
         ]),
@@ -74,7 +64,6 @@ const columns: ColumnDef<ElDewritoServer>[] = [
     {
         accessorKey: 'hostPlayer',
         header: makeSortHeader('Host'),
-        sortingFn: localeTextSorting,
         cell: ({ row }) => row.getValue('hostPlayer'),
     },
     {
