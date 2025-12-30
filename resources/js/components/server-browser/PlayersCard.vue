@@ -224,20 +224,17 @@ const groupedPlayers = computed(() => {
 </script>
 
 <template>
-    <HoverCard>
-        <HoverCardTrigger as-child>
-            <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
-        </HoverCardTrigger>
-        <HoverCardContent class="bg-background/100 dark:bg-background/100 backdrop-blur-xs">
-            <div v-if="!players || players.length === 0">
-                No players
-            </div>
-            <div v-else>
+    <template v-if="numPlayers > 0">
+        <HoverCard>
+            <HoverCardTrigger as-child>
+                <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
+            </HoverCardTrigger>
+            <HoverCardContent class="bg-background/100 dark:bg-background/100 backdrop-blur-xs">
                 <h4 class="mb-4 text-foreground has-text-weight-semibold">Players</h4>
                 <div class="text-base">
                     <template v-if="teamsEnabled">
                         <div v-for="group in groupedPlayers" :key="group.team ?? 'none'" class="mb-2">
-                                <div v-if="group.team !== null" class="mb-1 text-xs font-semibold">
+                            <div v-if="group.team !== null" class="mb-1 text-xs font-semibold">
                                 <span class="player-label team-label" :style="{ '--team-bg': TEAM_COLORS[group.team], '--team-fg': textColorForBackground(TEAM_COLORS[group.team] || '#fff') }">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }} ({{ group.players.length }})</span>
                             </div>
                             <ul class="players-list">
@@ -273,7 +270,7 @@ const groupedPlayers = computed(() => {
                                             <div class="flex items-center space-x-[6px]">
                                                 <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
                                             </div>
-                                                <div class="flex-1 px-1 flex items-center">
+                                            <div class="flex-1 px-1 flex items-center">
                                                 <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
                                             </div>
                                             <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
@@ -289,7 +286,10 @@ const groupedPlayers = computed(() => {
                         </ul>
                     </template>
                 </div>
-            </div>
-        </HoverCardContent>
-    </HoverCard>
+            </HoverCardContent>
+        </HoverCard>
+    </template>
+    <template v-else>
+        <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
+    </template>
 </template>

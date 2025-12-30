@@ -68,6 +68,7 @@ function fetchZekBrowser() {
                     port: server.port,
                     fileServerPort: server.fileServerPort,
                     hostPlayer: server.hostPlayer,
+                    passworded: server.passworded,
                     sprintState: server.sprintState,
                     sprintUnlimitedEnabled: server.sprintUnlimitedEnabled,
                     assassinationEnabled: server.assassinationEnabled,

@@ -82,6 +82,36 @@
         --font-sans:
             'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     }
+
+    /* Generic masked icon utility using currentColor for light/dark support */
+    .icon-mask {
+        display: inline-block;
+        background-color: currentColor;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+    }
+
+    /* Specific lock icon mask */
+    .icon-lock {
+        -webkit-mask-image: url('/assets/icons/lock-solid.svg');
+        mask-image: url('/assets/icons/lock-solid.svg');
+    }
+
+    /* Specific external-link icon mask */
+    .icon-external {
+        -webkit-mask-image: url('/assets/icons/external-link.svg');
+        mask-image: url('/assets/icons/external-link.svg');
+    }
+
+    /* Specific arrow-up-down (sort) icon mask */
+    .icon-sort {
+        -webkit-mask-image: url('/assets/icons/arrow-up-down.svg');
+        mask-image: url('/assets/icons/arrow-up-down.svg');
+    }
 }
 
 :root {

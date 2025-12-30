@@ -6,6 +6,7 @@ export class ElDewritoServer {
     port: number;
     fileServerPort?: number;
     hostPlayer: string;
+    passworded?: boolean;
     sprintState?: '0' | '1' | '2';
     sprintUnlimitedEnabled: '0' | '1';
     assassinationEnabled: '0' | '1';
@@ -41,6 +42,7 @@ export class ElDewritoServer {
         port: number;
         fileServerPort?: number;
         hostPlayer: string;
+        passworded?: boolean;
         sprintState?: '0' | '1' | '2';
         sprintUnlimitedEnabled: '0' | '1';
         assassinationEnabled: '0' | '1';
@@ -98,6 +100,7 @@ export class ElDewritoServer {
             ['port', typeof data.port === 'number'],
             ['fileServerPort', typeof data.fileServerPort === 'undefined' || typeof data.fileServerPort === 'number'],
             ['hostPlayer', typeof data.hostPlayer === 'string'],
+            ['passworded', typeof data.passworded === 'undefined' || typeof data.passworded === 'boolean'],
             ['sprintState', typeof data.sprintState === 'undefined' || ['0', '1', '2'].includes(data.sprintState)],
             ['sprintUnlimitedEnabled', ['0', '1'].includes(data.sprintUnlimitedEnabled)],
             ['assassinationEnabled', ['0', '1'].includes(data.assassinationEnabled)],

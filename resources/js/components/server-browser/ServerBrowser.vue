@@ -4,7 +4,7 @@ import DataTable from '@/components/server-browser/DataTable.vue';
 import ModsCard from '@/components/server-browser/ModsCard.vue';
 import PlayersCard from '@/components/server-browser/PlayersCard.vue';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ExternalLink } from 'lucide-vue-next';
+// Removed icon imports; using static masked SVGs
 import { h } from 'vue';
 
 interface Props {
@@ -13,44 +13,62 @@ interface Props {
 
 defineProps<Props>();
 
+// Shared sort icon helper to avoid duplication
+const SORT_ICON_CLASSES = 'icon-mask icon-sort inline-block w-3.5 h-3.5 ml-2 align-middle opacity-70';
+const renderSortIcon = () => h('span', { class: SORT_ICON_CLASSES, ariaHidden: 'true' });
+const makeSortHeader = (label: string, buttonClass = '') => ({ column }) =>
+    h(Button, {
+        class: ['gap-0', buttonClass].filter(Boolean).join(' '),
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+    }, () => [label, renderSortIcon()]);
+
 const columns: ColumnDef<ElDewritoServer>[] = [
     {
-        accessorKey: 'name',
+        id: 'passworded',
+        accessorFn: (row) => (row.passworded ? 1 : 0),
         header: ({ column }) => {
+            const icon = h('span', {
+                class: 'block mx-auto w-5 h-5 leading-none text-muted-foreground relative top-[1px] icon-mask icon-lock',
+                ariaHidden: 'true',
+            });
             return h(Button, {
+                class: 'block mx-auto w-8 h-8 p-0 flex items-center justify-center',
                 onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-            }, () => ['Name', h(ArrowUpDown, { size: 14 })])
+                title: 'Sort by password protection',
+            }, () => [icon])
         },
+        cell: ({ row }) => {
+            const server: ElDewritoServer = row.original;
+            if (!server.passworded) return h('span', { class: 'block mx-auto w-8' });
+            return h('span', { class: 'flex mx-auto w-8 h-5 items-center justify-center', title: 'Password protected' },
+                h('span', {
+                    class: 'block mx-auto w-5 h-5 leading-none text-muted-foreground relative top-[1px] icon-mask icon-lock',
+                    ariaHidden: 'true',
+                })
+            );
+        },
+    },
+    {
+        accessorKey: 'name',
+        header: makeSortHeader('Name'),
         cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [
             h('span', { class: 'font-bold!' }, row.getValue('name')),
         ]),
     },
     {
         accessorKey: 'hostPlayer',
-        header: ({ column }) => {
-            return h(Button, {
-                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-            }, () => ['Host', h(ArrowUpDown, { size: 14 })])
-        },
+        header: makeSortHeader('Host'),
         cell: ({ row }) => row.getValue('hostPlayer'),
     },
     {
         id: 'status',
-        header: ({ column }) => {
-            return h(Button, {
-                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-            }, () => ['Status', h(ArrowUpDown, { size: 14 })])
-        },
+        header: makeSortHeader('Status'),
         accessorFn: (row) => row.statusFormatted(),
         cell: ({ row }) => row.original.statusFormatted(),
     },
     {
         accessorKey: 'mods',
-        header: ({ column }) => {
-            return h(Button, {
-                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-            }, () => ['Mods', h(ArrowUpDown, { size: 14 })])
-        },
+        header: makeSortHeader('Mods'),
         accessorFn: (row) => row.mods?.length ?? 0,
         cell: ({ row }) => {
             const mods = row.original.mods;
@@ -64,11 +82,7 @@ const columns: ColumnDef<ElDewritoServer>[] = [
     },
     {
         accessorKey: 'numPlayers',
-        header: ({ column }) => {
-            return h(Button, {
-                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-            }, () => ['Players', h(ArrowUpDown, { size: 14 })])
-        },
+        header: makeSortHeader('Players'),
             cell: ({ row }) => {
             const server: ElDewritoServer = row.original;
             return h(PlayersCard, {
@@ -82,21 +96,12 @@ const columns: ColumnDef<ElDewritoServer>[] = [
     },
     {
         accessorKey: 'eldewritoVersion',
-        header: ({ column }) => {
-            return h(Button, {
-                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-            }, () => ['Version', h(ArrowUpDown, { size: 14 })])
-        },
+        header: makeSortHeader('Version'),
         cell: ({ row }) => row.original.versionWithoutTrailingZero(),
     },
     {
         accessorKey: 'ip',
-        header: ({ column }) => {
-            return h(Button, {
-                class: 'text-left',
-                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-            }, () => ['IP', h(ArrowUpDown, { size: 14 })])
-        },
+        header: makeSortHeader('IP', 'text-left'),
         cell: ({ row }) => {
             const server = row.original;
 
@@ -113,10 +118,11 @@ const columns: ColumnDef<ElDewritoServer>[] = [
                             target: '_blank',
                             title: `View JSON info`,
                             class: 'ml-1 inline-flex items-center',
-                        }, h(ExternalLink, {
-                            size: 16,
-                            class: 'inline-block',
-                        }),
+                        },
+                        h('span', {
+                            class: 'icon-mask icon-external inline-block w-4 h-4 opacity-80 align-middle',
+                            ariaHidden: 'true',
+                        })
                     ),
                 ]
             );
