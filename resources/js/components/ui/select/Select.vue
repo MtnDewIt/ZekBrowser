@@ -43,7 +43,7 @@ async function positionDropdown() {
   // position fixed relative to viewport so it escapes any overflow clipping
   // align the dropdown's right edge with the anchor element's right edge
   // subtract a small offset so the dropdown sits slightly to the right
-  const OFFSET_PX = 18
+  const OFFSET_PX = 17
   const rawRight = Math.round(window.innerWidth - rect.right - OFFSET_PX)
   const right = Math.max(0, rawRight)
   dropdownStyle.value = {
