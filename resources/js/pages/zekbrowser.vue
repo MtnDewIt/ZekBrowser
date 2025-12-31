@@ -54,7 +54,7 @@ const chartOptions = ref({
 });
 
 function fetchZekBrowser() {
-    fetch(props.zekBrowserApi)
+    return fetch(props.zekBrowserApi)
         .then((response) => response.json())
         .then((data) => {
             updateCounts(data.count);
@@ -163,6 +163,20 @@ function fetchStats() {
 const REFRESH_INTERVAL = 15000; // 30 seconds
 let refreshTimer: number | null = null;
 
+const isRefreshing = ref(false);
+
+async function handleRefresh() {
+    isRefreshing.value = true;
+    const minDelay = new Promise(resolve => setTimeout(resolve, 600));
+    try {
+        await Promise.all([fetchZekBrowser(), minDelay]);
+    } catch (error) {
+        console.error('Manual refresh failed:', error);
+    } finally {
+        isRefreshing.value = false;
+    }
+}
+
 onMounted(async () => {
     fetchZekBrowser();
     fetchStats();
@@ -196,7 +210,21 @@ onUnmounted(() => {
                     <h1 class="title is-2">ZekBrowser</h1>
                     <p class="subtitle is-spaced">{{ browserStatus }}</p>
                 </div>
-                <ThemeToggle />
+                <div class="header-right">
+                    <button
+                        @click="handleRefresh"
+                        class="refresh-button"
+                        :title="isRefreshing ? 'Refreshing...' : 'Refresh server list'"
+                        :aria-label="isRefreshing ? 'Refreshing...' : 'Refresh server list'"
+                    >
+                        <span
+                            class="icon-mask icon-refresh"
+                            :class="{ 'animate-spin': isRefreshing }"
+                            aria-hidden="true"
+                        ></span>
+                    </button>
+                    <ThemeToggle />
+                </div>
             </div>
 
             <ServerBrowser v-if="showBrowser" :servers="servers" />
@@ -215,12 +243,69 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1.25rem;
 }
 
 .header-left {
     display: flex;
     flex-direction: column;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.refresh-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.refresh-button:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+}
+
+.refresh-button:active {
+    transform: scale(0.95);
+}
+
+:global(.dark) .refresh-button:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.icon-mask {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-color: currentColor;
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+}
+
+.icon-refresh {
+    mask-image: url('/assets/icons/refresh.svg');
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 </style>
 
