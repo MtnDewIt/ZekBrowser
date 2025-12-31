@@ -229,8 +229,10 @@ onUnmounted(() => {
 
             <ServerBrowser v-if="showBrowser" :servers="servers" />
 
-            <h2 class="title is-3">Stats</h2>
-            <p class="subtitle">{{ statsStatus }}</p>
+            <div class="header-container-stats">
+                <h2 class="title is-3">Stats</h2>
+                <p class="subtitle">{{ statsStatus }}</p>
+            </div>
 
             <Chart v-if="chartOptions.series" :options="chartOptions"></Chart>
         </div>
@@ -243,7 +245,14 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.25rem;
+}
+
+.header-container-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2.25rem;
+    margin-bottom: 1rem;
 }
 
 .header-left {

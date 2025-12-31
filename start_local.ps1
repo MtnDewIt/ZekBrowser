@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "Installing dependencies and building..."
 
-composer install --ignore-platform-reqs
+composer install --ignore-platform-reqs --no-autoloader
 npm install
 pip install -r requirements.txt
 
