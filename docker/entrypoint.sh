@@ -25,6 +25,20 @@ if ! grep -q "^APP_KEY=base64:" /var/www/.env 2>/dev/null; then
     php /var/www/artisan key:generate --force
 fi
 
+# Set APP_ENV to production in Docker
+sed -i 's/^APP_ENV=.*/APP_ENV=production/' /var/www/.env
+sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/' /var/www/.env
+
+# Remove APP_URL if set (we'll detect it dynamically)
+sed -i 's/^APP_URL=.*/APP_URL=/' /var/www/.env
+
+# Ensure Python API URL is set correctly for internal communication
+if ! grep -q "^PYTHON_API_URL=" /var/www/.env 2>/dev/null; then
+    echo "PYTHON_API_URL=http://127.0.0.1:8001" >> /var/www/.env
+else
+    sed -i 's|^PYTHON_API_URL=.*|PYTHON_API_URL=http://127.0.0.1:8001|' /var/www/.env
+fi
+
 # Set permissions
 chown -R www-data:www-data /var/www/storage
 chown -R www-data:www-data /var/www/bootstrap/cache

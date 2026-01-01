@@ -1,18 +1,6 @@
 <?php
 
-
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | ZekBrowser API URL (temporary)
-    |--------------------------------------------------------------------------
-    |
-    | The URL of the ZekBrowser API, used to populate the server browser and stats.
-    |
-    */
-
-    'zekbrowser_api' => env('ZEKBROWSER_API', 'http://localhost:8000/api/'),
 
     /*
     |--------------------------------------------------------------------------
@@ -21,6 +9,7 @@ return [
     |
     | The internal URL where the Python FastAPI server is running.
     | This is used by Laravel to proxy requests.
+    | Defaults to localhost for internal communication.
     |
     */
 

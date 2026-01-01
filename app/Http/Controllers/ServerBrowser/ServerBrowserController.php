@@ -10,8 +10,7 @@ class ServerBrowserController extends Controller
 {
     /**
      * Display the server browser page.
-     * Fetches data from the legacy ZekBrowser API.
-     * TODO: Implement local cache
+     * API endpoint is dynamically determined from the current request URL.
      */
     public function index(Request $request): \Inertia\Response
     {
@@ -22,8 +21,11 @@ class ServerBrowserController extends Controller
             default => 'zekbrowser',
         };
 
+        // Build API URL dynamically from current request
+        $apiUrl = $request->getSchemeAndHttpHost() . '/api/';
+
         return Inertia::render("$view", [
-            'zekBrowserApi' => config('eldewrito.zekbrowser_api'),
+            'zekBrowserApi' => $apiUrl,
         ]);
     }
 }
