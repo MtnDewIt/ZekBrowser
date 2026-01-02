@@ -22,7 +22,7 @@ class ServerBrowserController extends Controller
         };
 
         // Build API URL dynamically from current request
-        $apiUrl = $request->getSchemeAndHttpHost() . '/api/';
+        $apiUrl = '/api/';
 
         return Inertia::render("$view", [
             'zekBrowserApi' => $apiUrl,
