@@ -1,95 +1,228 @@
-.player-label {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  line-height: 20px;
+/* Scoreboard table styling */
+.scoreboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: 'Conduit ITC Std', 'Segoe UI', Arial, sans-serif;
+  font-size: 14px;
+  color: #ffffff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-}
-.team-label {
-  padding: 2px 6px;
-  border-radius: 0;
+  background-color: #1a1a1a;
 }
 
-.players-list {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* Header row */
+.scoreboard-header {
+  height: 34px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #000;
 }
 
-/* Use explicit per-item margins instead of flex-gap to avoid rendering inconsistencies */
-.players-list > li {
-  margin: 0;
-  padding: 0;
+.scoreboard-header th {
+  padding: 6px 12px;
+  text-align: left;
+  font-weight: bold;
+  font-size: 14px;
+  vertical-align: middle;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff !important;
 }
-.players-list > li:not(:last-child) {
-  margin-bottom: 2px;
+
+.scoreboard-header th:last-child {
+  border-right: none;
 }
-.player-row {
-  height: 32px;
-  overflow: hidden;
-  background-color: var(--player-bg, #424242);
+
+.scoreboard-header .players-count {
+  text-align: left;
+  padding-left: 16px;
+  width: auto;
 }
-.player-row {
+
+.scoreboard-header .stat-header {
+  text-align: center;
+  width: 100px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* Team row */
+.team-row {
+  height: 34px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
   box-sizing: border-box;
 }
 
-/* Ensure spacing even if parent li has utility classes that zero margins */
-.players-list > li .player-row {
-  margin-bottom: 2px;
-}
-.players-list > li:last-child .player-row {
-  margin-bottom: 0;
+.team-row td {
+  padding: 0;
+  vertical-align: middle;
+  height: 34px;
+  box-sizing: border-box;
 }
 
-.player-row .row-inner {
-  height: 100%;
+.team-row .stat-cell {
+  padding-left: 45px !important;
+}
+
+.team-info {
   display: flex;
   align-items: center;
-  padding-left: 6px;
-  padding-right: 6px;
-  gap: 6px;
+  gap: 12px;
+  padding: 0 12px 0 16px;
+  height: 34px;
 }
-.player-label {
-  color: var(--player-fg, #ffffff);
+
+.team-number {
+  font-size: 18px;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+  padding-left: 8px;
 }
-.team-label {
-  background-color: var(--team-bg);
-  color: var(--team-fg);
+
+.team-name {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.team-score {
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Player row */
+.player-row {
+  height: 34px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.player-row:last-child {
+  border-bottom: none;
+}
+
+.player-row td {
+  padding: 6px 0;
+  vertical-align: middle;
+}
+
+.player-row td:first-child {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.player-row .stat-cell {
+  padding-left: 45px !important;
+  padding-right: 0 !important;
+}
+
+.player-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 10px;
+  padding-right: 12px;
+  justify-content: space-between;
 }
 
 .player-emblem {
   width: 20px;
   height: 20px;
   object-fit: contain;
-  display: block;
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
-/* Wider hover card for player list to fit more info */
-.playercard-content {
-  min-width: 420px;
-  max-width: 720px;
-  width: auto;
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
-/* Clickable player name styling */
+.player-name {
+  font-weight: bold;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .player-link {
   color: #ffffff !important;
   text-decoration: none;
   cursor: pointer;
 }
+
 .player-link:hover {
   text-decoration: underline;
+}
+
+.player-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 69px; /* service-tag (45px) + gap (6px) + rank icon (18px) */
+}
+
+.service-tag {
+  font-size: 12px;
+  font-weight: bold;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  white-space: nowrap;
+  min-width: 45px;
+  text-align: center;
+  display: inline-block;
 }
 
 .player-rank-icon {
   width: 18px;
   height: 18px;
-  display: inline-block;
-  margin-left: 6px;
-  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.stat-cell {
+  text-align: center;
+  width: 100px;
+  font-size: 15px;
+  font-weight: bold;
+  padding: 6px 12px !important;
+}
+
+.score-with-tags {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 45px !important;
+  padding-right: 12px !important;
+}
+
+.score-number {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.player-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Wider hover card for scoreboard table */
+.playercard-content {
+  min-width: 750px;
+  max-width: 950px;
+  width: auto;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Narrower card for private servers */
+.playercard-content:has(.text-muted-foreground) {
+  min-width: 200px;
+  max-width: 300px;
+  padding: 16px;
 }

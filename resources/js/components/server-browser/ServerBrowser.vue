@@ -96,6 +96,7 @@ const columns: ColumnDef<ElDewritoServer>[] = [
                 maxPlayers: server.maxPlayers,
                 players: server.players,
                 teams: server.teams,
+                teamScores: server.teamScores,
                 serverVersion: server.eldewritoVersionShort ?? server.eldewritoVersion ?? '',
                 passworded: !!server.passworded,
             });

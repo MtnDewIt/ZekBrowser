@@ -9,6 +9,7 @@ interface Props {
     maxPlayers: number;
     players?: any[];
     teams?: boolean | string | number;
+    teamScores?: number[];
     serverVersion?: string;
     passworded?: boolean;
 }
@@ -21,7 +22,9 @@ const emblemCache = reactive(new Map<string, string>());
 const resolvedStats = reactive(new Map<string, string>());
 const resolvedRanks = reactive(new Map<string, number>());
 const resolvedStatsTimestamps = reactive(new Map<string, number>());
+const resolvedRanksTimestamps = reactive(new Map<string, number>());
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
+const RANK_CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutes
 async function ensureEmblem(emblem: string | null | undefined) {
     if (!emblem) return;
     if (emblemCache.has(emblem)) return;
@@ -90,8 +93,11 @@ async function resolveStatsIdFromUid(uid: string): Promise<string | null> {
                 resolvedStats.set(uid, s);
                 resolvedStatsTimestamps.set(uid, Date.now());
                 // capture rank if present at top-level when id is returned
-                if (data.rank && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) {
-                    try { resolvedRanks.set(uid, Number(data.rank)); } catch {}
+                if (data.rank !== null && data.rank !== undefined && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) {
+                    try { 
+                        resolvedRanks.set(uid, Number(data.rank));
+                        resolvedRanksTimestamps.set(uid, Date.now());
+                    } catch {}
                 }
                 return s;
             }
@@ -102,17 +108,19 @@ async function resolveStatsIdFromUid(uid: string): Promise<string | null> {
                 resolvedStats.set(uid, s);
                 resolvedStatsTimestamps.set(uid, Date.now());
                 // store rank if present on nested player
-                if (typeof data.player.rank === 'number' || (typeof data.player.rank === 'string' && /^\d+$/.test(String(data.player.rank)))) {
+                if (data.player.rank !== null && data.player.rank !== undefined && (typeof data.player.rank === 'number' || (typeof data.player.rank === 'string' && /^\d+$/.test(String(data.player.rank))))) {
                     resolvedRanks.set(uid, Number(data.player.rank));
+                    resolvedRanksTimestamps.set(uid, Date.now());
                 }
                 return s;
             }
         }
 
         // also capture top-level rank if present
-        if (data.rank && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) {
+        if (data.rank !== null && data.rank !== undefined && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) {
             try {
                 resolvedRanks.set(uid, Number(data.rank));
+                resolvedRanksTimestamps.set(uid, Date.now());
             } catch {}
         }
 
@@ -306,12 +314,8 @@ function resolvePlayerColor(p: any) {
 
 function getPlayerScore(p: any) {
     if (!p || typeof p !== 'object') return 0;
-    const candidates = [p.score, p.kills, p.points, p.pointsTotal, p.points_total, p.s];
-    for (const c of candidates) {
-        const n = Number(c);
-        if (!Number.isNaN(n)) return n;
-    }
-    return 0;
+    const n = Number(p.roundScore);
+    return Number.isNaN(n) ? 0 : n;
 }
 
 function getPlayerKills(p: any) {
@@ -334,21 +338,60 @@ function getPlayerDeaths(p: any) {
     return 0;
 }
 
-function getPlayerRank(p: any): number | null {
-    try {
-        // Prefer rank present directly on player object
-        const direct = p?.rank ?? p?.playerRank ?? p?.service_rank ?? p?.serviceRank ?? null;
-        if (direct !== null && direct !== undefined) {
-            const n = Number(direct);
-            if (!Number.isNaN(n)) return n;
-        }
+function getPlayerAssists(p: any) {
+    if (!p || typeof p !== 'object') return 0;
+    const candidates = [p.assists, p.a, p.assistCount, p.assist_count];
+    for (const c of candidates) {
+        const n = Number(c);
+        if (!Number.isNaN(n)) return n;
+    }
+    return 0;
+}
 
-        // Otherwise try resolvedRanks cache via UID
-        const candidate = getCandidateUid(p);
-        if (!candidate) return null;
+function getPlayerBestStreak(p: any) {
+    if (!p || typeof p !== 'object') return 0;
+    const candidates = [p.bestStreak, p.best_streak, p.killingSpree, p.killing_spree, p.streak, p.maxStreak, p.max_streak];
+    for (const c of candidates) {
+        const n = Number(c);
+        if (!Number.isNaN(n)) return n;
+    }
+    return 0;
+}
+
+function getPlayerRank(p: any): number | null {
+    if (!p || typeof p !== 'object') return null;
+    
+    // Check for rank field directly
+    if ('rank' in p) {
+        const n = Number(p.rank);
+        if (!Number.isNaN(n) && n >= 0) return n;
+    }
+    
+    // Try other field names
+    const rankFields = ['playerRank', 'service_rank', 'serviceRank'];
+    for (const field of rankFields) {
+        if (field in p) {
+            const n = Number(p[field]);
+            if (!Number.isNaN(n) && n >= 0) return n;
+        }
+    }
+    
+    // Try resolvedRanks cache via UID
+    const candidate = getCandidateUid(p);
+    if (candidate) {
         const cached = resolvedRanks.get(candidate);
-        if (cached !== undefined) return cached;
-    } catch {}
+        if (typeof cached === 'number' && cached >= 0) {
+            // Validate timestamp
+            const timestamp = resolvedRanksTimestamps.get(candidate);
+            if (timestamp && (Date.now() - timestamp < RANK_CACHE_TTL_MS)) {
+                return cached;
+            }
+            // Cache expired, remove it
+            resolvedRanks.delete(candidate);
+            resolvedRanksTimestamps.delete(candidate);
+        }
+    }
+    
     return null;
 }
 
@@ -407,12 +450,13 @@ const groupedPlayers = computed(() => {
             return String(pa.name ?? pa.playerName ?? '').localeCompare(String(pb.name ?? pb.playerName ?? ''));
         });
 
-        const totals = players.reduce((acc, it) => {
-            acc.score += getPlayerScore(it.player);
-            acc.kills += getPlayerKills(it.player);
-            acc.deaths += getPlayerDeaths(it.player);
-            return acc;
-        }, { score: 0, kills: 0, deaths: 0 });
+        const totals = {
+            score: (props.teamScores && team !== null && team >= 0 && team < props.teamScores.length) 
+                ? props.teamScores[team] 
+                : players.reduce((acc, it) => acc + getPlayerScore(it.player), 0),
+            kills: players.reduce((acc, it) => acc + getPlayerKills(it.player), 0),
+            deaths: players.reduce((acc, it) => acc + getPlayerDeaths(it.player), 0)
+        };
 
         arr.push({ team, players, totals });
     }
@@ -434,78 +478,111 @@ const groupedPlayers = computed(() => {
     <template v-if="numPlayers > 0">
         <HoverCard>
             <HoverCardTrigger as-child @mouseenter="preloadAllPlayers">
-                    <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
-                </HoverCardTrigger>
+                <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
+            </HoverCardTrigger>
             <HoverCardContent class="playercard-content bg-background/100 dark:bg-background/100 backdrop-blur-xs">
-                <h4 class="mb-4 text-foreground has-text-weight-semibold">Players</h4>
-                <div class="text-base">
-                    <template v-if="passworded">
-                        <div class="text-sm text-muted-foreground">Private Server</div>
-                    </template>
-                    <template v-else>
-                        <template v-if="teamsEnabled">
-                            <div v-for="group in groupedPlayers" :key="group.team ?? 'none'" class="mb-2">
-                                <div v-if="group.team !== null" class="mb-1 text-xs font-semibold">
-                                    <span class="player-label team-label" :style="{ '--team-bg': TEAM_COLORS[group.team], '--team-fg': textColorForBackground(TEAM_COLORS[group.team] || '#fff') }">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }} ({{ group.players.length }})</span>
-                                </div>
-                                <ul class="players-list">
-                                    <li v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="block text-base m-0 p-0">
+                <template v-if="passworded">
+                    <div class="text-sm text-muted-foreground">Private Server</div>
+                </template>
+                <template v-else>
+                    <table class="scoreboard-table">
+                        <thead>
+                            <tr class="scoreboard-header">
+                                <th class="players-count">Players [{{ numPlayers }}/{{ maxPlayers }}]</th>
+                                <th class="stat-header">Kills</th>
+                                <th class="stat-header">Assists</th>
+                                <th class="stat-header">Deaths</th>
+                                <th class="stat-header">Best Streak</th>
+                                <th class="stat-header">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-if="teamsEnabled">
+                                <template v-for="(group, groupIdx) in groupedPlayers" :key="group.team ?? 'none'">
+                                    <tr v-if="group.team !== null" class="team-row" :style="{ backgroundColor: TEAM_COLORS[group.team] }">
+                                        <td class="team-info">
+                                            <span class="team-number">{{ groupIdx + 1 }}</span>
+                                            <span class="team-name">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }}</span>
+                                        </td>
+                                        <td class="stat-cell"></td>
+                                        <td class="stat-cell"></td>
+                                        <td class="stat-cell"></td>
+                                        <td class="stat-cell"></td>
+                                        <td class="stat-cell team-score">{{ group.totals.score }}</td>
+                                    </tr>
+                                    <tr v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="player-row" :style="{ backgroundColor: resolvePlayerColor(p) }">
                                         <template v-if="typeof p === 'object' && p !== null">
-                                            <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
-                                                <div class="row-inner w-full">
-                                                    <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
-                                                    <div class="flex-1 px-1 flex items-center">
-                                                            <template v-if="isClickablePlayer(p)">
-                                                                <a class="font-semibold truncate text-base player-label player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</a>
-                                                            </template>
-                                                            <template v-else>
-                                                                <span class="font-semibold truncate text-base player-label">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? JSON.stringify(p) }}</span>
-                                                            </template>
-                                                        </div>
-                                                    <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
-                                                        <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
-                                                            <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon ml-1" alt="rank" decoding="async" />
+                                            <td>
+                                                <div class="player-cell">
+                                                    <img :src="getDisplayEmblemSrc(emblemStr)" class="player-emblem" alt="emblem" decoding="async" />
+                                                    <div class="player-info">
+                                                        <template v-if="isClickablePlayer(p)">
+                                                            <a class="player-name player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">
+                                                                {{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}
+                                                            </a>
+                                                        </template>
+                                                        <template v-else>
+                                                            <span class="player-name">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}</span>
+                                                        </template>
+                                                    </div>
+                                                    <div class="player-tags">
+                                                        <span v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="service-tag">
+                                                            {{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}
+                                                        </span>
+                                                        <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
                                                     </div>
                                                 </div>
-                                            </div>
+                                            </td>
+                                            <td class="stat-cell">{{ getPlayerKills(p) }}</td>
+                                            <td class="stat-cell">{{ getPlayerAssists(p) }}</td>
+                                            <td class="stat-cell">{{ getPlayerDeaths(p) }}</td>
+                                            <td class="stat-cell">{{ getPlayerBestStreak(p) }}</td>
+                                            <td class="stat-cell">{{ getPlayerScore(p) }}</td>
                                         </template>
                                         <template v-else>
-                                            <span class="truncate">{{ p }}</span>
+                                            <td colspan="6">{{ p }}</td>
                                         </template>
-                                    </li>
-                                </ul>
-                            </div>
-                        </template>
-                        <template v-else>
-                            <ul class="players-list">
-                                <li v-for="({ player: p, emblemStr }, index) in sortedPlayers" :key="index" class="block text-base m-0 p-0">
+                                    </tr>
+                                </template>
+                            </template>
+                            <template v-else>
+                                <tr v-for="({ player: p, emblemStr }, index) in sortedPlayers" :key="index" class="player-row" :style="{ backgroundColor: resolvePlayerColor(p) }">
                                     <template v-if="typeof p === 'object' && p !== null">
-                                        <div class="w-full player-row" :style="{ '--player-bg': resolvePlayerColor(p), '--player-fg': textColorForBackground(resolvePlayerColor(p)) }">
-                                            <div class="row-inner w-full">
-                                                <img :src="getDisplayEmblemSrc(emblemStr)" class="flex-shrink-0 player-emblem" alt="emblem" decoding="async" />
-                                                <div class="flex-1 px-1 flex items-center">
+                                        <td>
+                                            <div class="player-cell">
+                                                <img :src="getDisplayEmblemSrc(emblemStr)" class="player-emblem" alt="emblem" decoding="async" />
+                                                <div class="player-info">
                                                     <template v-if="isClickablePlayer(p)">
-                                                        <a class="font-semibold truncate text-base player-label player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</a>
+                                                        <a class="player-name player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">
+                                                            {{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}
+                                                        </a>
                                                     </template>
                                                     <template v-else>
-                                                        <span class="font-semibold truncate text-base player-label">{{ p.name ?? p.playerName ?? p.displayName ?? p.player_name ?? JSON.stringify(p) }}</span>
+                                                        <span class="player-name">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}</span>
                                                     </template>
                                                 </div>
-                                                <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
-                                                    <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
-                                                        <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon ml-1" alt="rank" decoding="async" />
+                                                <div class="player-tags">
+                                                    <span v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="service-tag">
+                                                        {{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}
+                                                    </span>
+                                                    <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
                                                 </div>
                                             </div>
-                                        </div>
+                                        </td>
+                                        <td class="stat-cell">{{ getPlayerKills(p) }}</td>
+                                        <td class="stat-cell">{{ getPlayerAssists(p) }}</td>
+                                        <td class="stat-cell">{{ getPlayerDeaths(p) }}</td>
+                                        <td class="stat-cell">{{ getPlayerBestStreak(p) }}</td>
+                                        <td class="stat-cell">{{ getPlayerScore(p) }}</td>
                                     </template>
                                     <template v-else>
-                                        <span class="truncate">{{ p }}</span>
+                                        <td colspan="6">{{ p }}</td>
                                     </template>
-                                </li>
-                            </ul>
-                        </template>
-                    </template>
-                </div>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </template>
             </HoverCardContent>
         </HoverCard>
     </template>
