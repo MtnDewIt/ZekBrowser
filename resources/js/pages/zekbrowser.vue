@@ -204,43 +204,62 @@ onUnmounted(() => {
     </Head>
 
     <section class="section">
-        <div class="container">
-            <div class="header-container">
-                <div class="header-left">
-                    <h1 class="title is-2">ZekBrowser</h1>
-                    <p class="subtitle is-spaced">{{ browserStatus }}</p>
+        <div class="container-flex">
+            <div class="container-flex-flex">
+                <div class="header-container">
+                    <div class="header-left">
+                        <h1 class="title is-2">ZekBrowser</h1>
+                        <p class="subtitle is-spaced">{{ browserStatus }}</p>
+                    </div>
+                    <div class="header-right">
+                        <button
+                            @click="handleRefresh"
+                            class="refresh-button"
+                            :title="isRefreshing ? 'Refreshing...' : 'Refresh server list'"
+                            :aria-label="isRefreshing ? 'Refreshing...' : 'Refresh server list'"
+                        >
+                            <span
+                                class="icon-mask icon-refresh"
+                                :class="{ 'animate-spin': isRefreshing }"
+                                aria-hidden="true"
+                            ></span>
+                        </button>
+                        <ThemeToggle />
+                    </div>
                 </div>
-                <div class="header-right">
-                    <button
-                        @click="handleRefresh"
-                        class="refresh-button"
-                        :title="isRefreshing ? 'Refreshing...' : 'Refresh server list'"
-                        :aria-label="isRefreshing ? 'Refreshing...' : 'Refresh server list'"
-                    >
-                        <span
-                            class="icon-mask icon-refresh"
-                            :class="{ 'animate-spin': isRefreshing }"
-                            aria-hidden="true"
-                        ></span>
-                    </button>
-                    <ThemeToggle />
+            
+                <ServerBrowser v-if="showBrowser" :servers="servers" />
+            
+                <div class="header-container-stats">
+                    <h2 class="title is-3">Stats</h2>
+                    <p class="subtitle">{{ statsStatus }}</p>
                 </div>
+            
+                <Chart v-if="chartOptions.series" :options="chartOptions"></Chart>
             </div>
-
-            <ServerBrowser v-if="showBrowser" :servers="servers" />
-
-            <div class="header-container-stats">
-                <h2 class="title is-3">Stats</h2>
-                <p class="subtitle">{{ statsStatus }}</p>
-            </div>
-
-            <Chart v-if="chartOptions.series" :options="chartOptions"></Chart>
         </div>
     </section>
 
 </template>
 
 <style scoped>
+.container-flex {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.container-flex-flex {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: left;
+
+    /*TODO: Maybe add better handling for weird resolutions*/
+    width: min(100%, calc(100vh * 16 / 9));
+}
+
 .header-container {
     display: flex;
     justify-content: space-between;
