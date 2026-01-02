@@ -85,3 +85,11 @@
 .player-link:hover {
   text-decoration: underline;
 }
+
+.player-rank-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: middle;
+}

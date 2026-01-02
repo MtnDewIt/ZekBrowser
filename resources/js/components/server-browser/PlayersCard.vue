@@ -19,6 +19,7 @@ const passworded = computed(() => !!props.passworded);
 // Emblem cache
 const emblemCache = reactive(new Map<string, string>());
 const resolvedStats = reactive(new Map<string, string>());
+const resolvedRanks = reactive(new Map<string, number>());
 const resolvedStatsTimestamps = reactive(new Map<string, number>());
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 async function ensureEmblem(emblem: string | null | undefined) {
@@ -88,6 +89,10 @@ async function resolveStatsIdFromUid(uid: string): Promise<string | null> {
             if (/^\d+$/.test(s)) {
                 resolvedStats.set(uid, s);
                 resolvedStatsTimestamps.set(uid, Date.now());
+                // capture rank if present at top-level when id is returned
+                if (data.rank && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) {
+                    try { resolvedRanks.set(uid, Number(data.rank)); } catch {}
+                }
                 return s;
             }
         }
@@ -96,8 +101,19 @@ async function resolveStatsIdFromUid(uid: string): Promise<string | null> {
             if (/^\d+$/.test(s)) {
                 resolvedStats.set(uid, s);
                 resolvedStatsTimestamps.set(uid, Date.now());
+                // store rank if present on nested player
+                if (typeof data.player.rank === 'number' || (typeof data.player.rank === 'string' && /^\d+$/.test(String(data.player.rank)))) {
+                    resolvedRanks.set(uid, Number(data.player.rank));
+                }
                 return s;
             }
+        }
+
+        // also capture top-level rank if present
+        if (data.rank && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) {
+            try {
+                resolvedRanks.set(uid, Number(data.rank));
+            } catch {}
         }
 
         return null;
@@ -318,6 +334,24 @@ function getPlayerDeaths(p: any) {
     return 0;
 }
 
+function getPlayerRank(p: any): number | null {
+    try {
+        // Prefer rank present directly on player object
+        const direct = p?.rank ?? p?.playerRank ?? p?.service_rank ?? p?.serviceRank ?? null;
+        if (direct !== null && direct !== undefined) {
+            const n = Number(direct);
+            if (!Number.isNaN(n)) return n;
+        }
+
+        // Otherwise try resolvedRanks cache via UID
+        const candidate = getCandidateUid(p);
+        if (!candidate) return null;
+        const cached = resolvedRanks.get(candidate);
+        if (cached !== undefined) return cached;
+    } catch {}
+    return null;
+}
+
 // Pre-load emblems for all players
 const processedPlayers = computed(() => {
     if (!props.players) return [];
@@ -430,6 +464,7 @@ const groupedPlayers = computed(() => {
                                                         </div>
                                                     <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
                                                         <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
+                                                            <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon ml-1" alt="rank" decoding="async" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -458,6 +493,7 @@ const groupedPlayers = computed(() => {
                                                 </div>
                                                 <div v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="text-xs px-1 flex items-center">
                                                     <span class="text-base player-label">{{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}</span>
+                                                        <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon ml-1" alt="rank" decoding="async" />
                                                 </div>
                                             </div>
                                         </div>
