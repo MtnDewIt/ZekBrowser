@@ -10,6 +10,7 @@ from typing import Dict, List, Set, Any, Optional
 
 import httpx
 import uvicorn
+import re
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -400,6 +401,36 @@ async def get_service_record(uid: Optional[str] = None):
                 content = resp.json()
             except Exception:
                 content = resp.text
+
+            # If we received JSON content, attempt to resolve the numeric player id
+            # and fetch the public stats page to extract the player's rank.
+            try:
+                player_id = None
+                if isinstance(content, dict):
+                    # top-level id or nested player.id
+                    id_val = content.get('id')
+                    if not id_val and isinstance(content.get('player'), dict):
+                        id_val = content['player'].get('id')
+
+                    if id_val is not None and (isinstance(id_val, int) or (isinstance(id_val, str) and str(id_val).isdigit())):
+                        player_id = str(id_val)
+
+                if player_id:
+                    stats_url = f"https://stats.eldewrito.org/player/{player_id}"
+                    try:
+                        stats_resp = await client.get(stats_url, timeout=API_TIMEOUT)
+                        if stats_resp.status_code == 200 and stats_resp.text:
+                            m = re.search(r"<span[^>]*class=[\"']playerRank[\"'][^>]*>\s*Rank:\s*(\d+)", stats_resp.text, re.IGNORECASE)
+                            if m:
+                                rank_val = int(m.group(1))
+                                if isinstance(content, dict):
+                                    content['rank'] = rank_val
+                                else:
+                                    content = {"raw": content, "rank": rank_val}
+                    except Exception:
+                        logger.debug("Failed to fetch or parse stats page for player id %s", player_id)
+            except Exception:
+                logger.debug("Error while attempting to enrich service record with player rank", exc_info=True)
 
             return JSONResponse(status_code=resp.status_code, content=content)
     except Exception as e:
