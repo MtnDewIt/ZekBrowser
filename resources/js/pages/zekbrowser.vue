@@ -305,10 +305,6 @@ onUnmounted(() => {
     transform: scale(0.95);
 }
 
-:global(.dark) .refresh-button:hover {
-    background-color: rgba(255, 255, 255, 0.12);
-}
-
 .icon-mask {
     display: inline-block;
     width: 20px;
@@ -342,21 +338,7 @@ onUnmounted(() => {
     --background: var(--bulma-body-background-color);
 }
 
-/* Bulma dark mode overrides */
-:global(.dark) {
-    --bulma-body-background-color: #0a0a0a;
-    --bulma-body-color: #f5f5f5;
-    --bulma-text-strong: #f5f5f5;
-    --bulma-title-color: #f5f5f5;
-    --bulma-subtitle-color: #b5b5b5;
-}
-
-:global(.dark) .section {
-    background-color: #0a0a0a;
-}
-
-:global(.dark) .title,
-:global(.dark) .subtitle {
-    color: #f5f5f5;
+.dark {
+    background-color: var(--background);
 }
 </style>
