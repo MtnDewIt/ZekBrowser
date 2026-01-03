@@ -182,7 +182,7 @@ onMounted(async () => {
     fetchStats();
     
     // Set up auto-refresh every 30 seconds
-    refreshTimer = window.setInterval(() => {
+    refreshTimer = globalThis.setInterval(() => {
         fetchZekBrowser();
     }, REFRESH_INTERVAL);
 });

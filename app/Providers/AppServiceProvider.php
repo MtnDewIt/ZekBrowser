@@ -20,19 +20,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if 
+        if
         (
             request()->header('X-Forwarded-Proto') === 'https' ||
             request()->header('X-Forwarded-SSL') === 'on' ||
             request()->server('HTTP_X_FORWARDED_PROTO') === 'https' ||
             request()->server('HTTP_X_FORWARDED_SSL') === 'on'
-        ) 
+        )
         {
             URL::forceScheme('https');
         }
 
         request()->setTrustedProxies(
-            ['*'], 
+            ['*'],
             \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
             \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |
             \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT |

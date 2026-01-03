@@ -31,11 +31,9 @@ WORKDIR /var/www
 # Copy application files
 COPY . .
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Install Node dependencies and build assets
-RUN npm ci && npm run build
+# Install PHP dependencies and Node dependencies and build assets
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+&& npm ci && npm run build
 
 # Install Python dependencies
 COPY requirements.txt /var/www/requirements.txt

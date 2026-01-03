@@ -1,6 +1,4 @@
 // Lightweight TypeScript port of the C# EmblemGenerator for canvas-based emblems
-import { ref } from 'vue';
-
 type RGB = { r: number; g: number; b: number };
 
 const ColorValuesHex = [
@@ -70,7 +68,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = (e) => reject(e);
+    img.onerror = () => reject(new Error('Failed to resolve emblem image'));
     img.src = src;
   });
 }

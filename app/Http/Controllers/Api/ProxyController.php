@@ -10,6 +10,8 @@ class ProxyController extends Controller
 {
     private string $pythonApiUrl;
 
+    private string $applicationPath = 'application/json';
+
     public function __construct()
     {
         $this->pythonApiUrl = config('eldewrito.python_api_url', 'http://127.0.0.1:8001');
@@ -21,7 +23,7 @@ class ProxyController extends Controller
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/");
             
             return response($response->body(), $response->status())
-                ->header('Content-Type', 'application/json');
+                ->header('Content-Type', $this->applicationPath);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to fetch server data',
@@ -36,7 +38,7 @@ class ProxyController extends Controller
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/stats");
             
             return response($response->body(), $response->status())
-                ->header('Content-Type', 'application/json');
+                ->header('Content-Type', $this->applicationPath);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to fetch stats data',
@@ -65,7 +67,7 @@ class ProxyController extends Controller
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/servicerecord", ['uid' => $uid]);
 
             return response($response->body(), $response->status())
-                ->header('Content-Type', 'application/json');
+                ->header('Content-Type', $this->applicationPath);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to fetch service record',

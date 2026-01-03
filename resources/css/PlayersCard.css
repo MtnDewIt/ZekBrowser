@@ -158,14 +158,6 @@
   text-decoration: underline;
 }
 
-.player-tags {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  min-width: 69px; /* service-tag (45px) + gap (6px) + rank icon (18px) */
-}
-
 .service-tag {
   font-size: 12px;
   font-weight: bold;
