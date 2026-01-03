@@ -22,8 +22,8 @@ const supportsRanks = computed(() => {
     if (!props.serverVersion) return false;
     const match = props.serverVersion.match(/^(\d+)\.(\d+)/);
     if (!match) return false;
-    const major = parseInt(match[1]);
-    const minor = parseInt(match[2]);
+    const major = Number.parseInt(match[1]);
+    const minor = Number.parseInt(match[2]);
     return major > 0 || (major === 0 && minor >= 7);
 });
 

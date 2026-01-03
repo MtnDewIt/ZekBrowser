@@ -1,3 +1,4 @@
+import anyio
 import asyncio
 import json
 import logging
@@ -277,8 +278,9 @@ async def update_server_cache():
     
     # 1. Load Master Server URLs from local JSON
     try:
-        with open(DEWRITO_JSON_PATH, 'r') as f:
-            config = json.load(f)
+        async with await anyio.open_file(DEWRITO_JSON_PATH, 'r') as f:
+            data = await f.read()
+            config = json.loads(data)
             master_entries = config.get("masterServers", [])
             # Extract only the 'list' attribute
             master_urls = [m['list'] for m in master_entries if 'list' in m]

@@ -13,7 +13,7 @@ const ColorValues: RGB[] = ColorValuesHex.map(h => hexToRgb(h));
 
 function hexToRgb(hex: string): RGB {
   const c = hex.replace('#','');
-  return { r: parseInt(c.substring(0,2),16), g: parseInt(c.substring(2,4),16), b: parseInt(c.substring(4,6),16) };
+  return { r: Number.parseInt(c.substring(0,2),16), g: Number.parseInt(c.substring(2,4),16), b: Number.parseInt(c.substring(4,6),16) };
 }
 
 enum ColorPolicy { KeepEven = 'KeepEven', KeepBlue = 'KeepBlue' }
@@ -34,8 +34,8 @@ function getEmblemColor(value: string | undefined): RGB {
   if (value.length === 6 && /^[0-9a-fA-F]+$/.test(value)) {
     return hexToRgb('#' + value);
   }
-  const idx = parseInt(value, 10);
-  if (!isNaN(idx) && idx >= 0 && idx < ColorValues.length) return ColorValues[idx];
+  const idx = Number.parseInt(value, 10);
+  if (!Number.isNaN(idx) && idx >= 0 && idx < ColorValues.length) return ColorValues[idx];
   return ColorValues[0];
 }
 
@@ -57,9 +57,9 @@ function extractEmblemData(emblem: string): EmblemData {
       case '1': data.backgroundColor = getEmblemColor(v); break;
       case '2': data.secondaryColor = getEmblemColor(v); break;
       case '3': data.primaryColor = getEmblemColor(v); break;
-      case 'fi': data.foregroundIndex = parseInt(v,10) || 0; break;
-      case 'bi': data.backgroundIndex = parseInt(v,10) || 0; break;
-      case 'fl': data.toggleSecondary = (parseInt(v,10) === 1); break;
+      case 'fi': data.foregroundIndex = Number.parseInt(v,10) || 0; break;
+      case 'bi': data.backgroundIndex = Number.parseInt(v,10) || 0; break;
+      case 'fl': data.toggleSecondary = (Number.parseInt(v,10) === 1); break;
     }
   }
   return data;

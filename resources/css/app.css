@@ -2,11 +2,6 @@
 
 @import 'tw-animate-css';
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-
-@custom-variant dark (&:is(.dark *));
-
 /* Prevent reka-ui from adding padding/margin to body when dialogs open */
 body[data-scroll-locked] {
     padding-right: 0 !important;
