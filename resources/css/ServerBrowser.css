@@ -1,19 +1,23 @@
-.server-browser-wrapper {
+.server-browser-wrapper 
+{
     position: relative;
 }
 
-.server-browser-header {
+.server-browser-header 
+{
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.75rem;
 }
 
-.header-spacer {
+.header-spacer 
+{
     flex: 1;
 }
 
-.refresh-button {
+.refresh-button 
+{
     background: none;
     border: none;
     cursor: pointer;
@@ -30,28 +34,35 @@
     background-color: rgba(0, 0, 0, 0.08);
 }
 
-.refresh-button:active:not(:disabled) {
+.refresh-button:active:not(:disabled) 
+{
     transform: scale(0.95);
 }
 
-.dark .refresh-button:hover:not(:disabled) {
+.dark .refresh-button:hover:not(:disabled) 
+{
     background-color: rgba(255, 255, 255, 0.12);
 }
 
-.refresh-button:disabled {
+.refresh-button:disabled 
+{
     opacity: 0.5;
     cursor: not-allowed;
 }
 
-.animate-spin {
+.animate-spin 
+{
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    from {
+@keyframes spin 
+{
+    from 
+    {
         transform: rotate(0deg);
     }
-    to {
+    to 
+    {
         transform: rotate(360deg);
     }
 }

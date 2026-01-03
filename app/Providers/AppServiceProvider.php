@@ -7,17 +7,11 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        // Do we really need this?
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         if
@@ -31,7 +25,8 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        request()->setTrustedProxies(
+        request()->setTrustedProxies
+        (
             ['*'],
             \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR |
             \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST |

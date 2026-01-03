@@ -2,13 +2,14 @@
 
 @import 'tw-animate-css';
 
-/* Prevent reka-ui from adding padding/margin to body when dialogs open */
-body[data-scroll-locked] {
+body[data-scroll-locked] 
+{
     padding-right: 0 !important;
     margin-right: 0 !important;
 }
 
-@theme inline {
+@theme inline 
+{
     --font-sans: Instrument Sans, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
     --radius-lg: var(--radius);
@@ -59,33 +60,29 @@ body[data-scroll-locked] {
     --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
-@layer base {
+@layer base 
+{
     *,
     ::after,
     ::before,
     ::backdrop,
-    ::file-selector-button {
+    ::file-selector-button 
+    {
         border-color: var(--color-gray-200, currentColor);
     }
 }
 
-@layer utilities {
+@layer utilities 
+{
     body,
-    html {
+    html 
+    {
         --font-sans:
             'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     }
 
-    /* Generic masked icon utility using currentColor for light/dark support */
-    .icon-mask {
+    .icon-mask 
+    {
         display: inline-block;
         background-color: currentColor;
         -webkit-mask-repeat: no-repeat;
@@ -96,36 +93,39 @@ body[data-scroll-locked] {
         mask-size: contain;
     }
 
-    /* Specific lock icon mask */
-    .icon-lock {
+    .icon-lock 
+    {
         -webkit-mask-image: url('/assets/icons/lock-solid.svg');
         mask-image: url('/assets/icons/lock-solid.svg');
     }
 
-    /* Specific external-link icon mask */
-    .icon-external {
+    .icon-external 
+    {
         -webkit-mask-image: url('/assets/icons/external-link.svg');
         mask-image: url('/assets/icons/external-link.svg');
     }
 
-    /* Specific arrow-up-down (sort) icon mask */
-    .icon-sort {
+    .icon-sort 
+    {
         -webkit-mask-image: url('/assets/icons/arrow-up-down.svg');
         mask-image: url('/assets/icons/arrow-up-down.svg');
     }
 
-    /* Directional sort icons */
-    .icon-sort-up {
+    .icon-sort-up 
+    {
         -webkit-mask-image: url('/assets/icons/move-up.svg');
         mask-image: url('/assets/icons/move-up.svg');
     }
-    .icon-sort-down {
+
+    .icon-sort-down 
+    {
         -webkit-mask-image: url('/assets/icons/move-down.svg');
         mask-image: url('/assets/icons/move-down.svg');
     }
 }
 
-:root {
+:root 
+{
     --background: hsl(0 0% 100%);
     --foreground: hsl(0 0% 3.9%);
     --card: hsl(0 0% 100%);
@@ -162,7 +162,8 @@ body[data-scroll-locked] {
     --sidebar: hsl(0 0% 98%);
 }
 
-.dark {
+.dark 
+{
     --background: hsl(0 0% 3.9%);
     --foreground: hsl(0 0% 98%);
     --card: hsl(0 0% 3.9%);
@@ -199,79 +200,97 @@ body[data-scroll-locked] {
 }
 
 @layer base {
-    * {
+
+    * 
+    {
         @apply border-border outline-ring/50;
     }
-    body {
+    body 
+    {
         @apply bg-background text-foreground;
     }
-    html {
+    html 
+    {
         @apply bg-background;
     }
-    html, body {
+    html, body 
+    {
         min-height: 100vh;
     }
 }
 
-/* Highcharts light mode (default) */
-.highcharts-background {
+.highcharts-background 
+{
     fill: #ffffff !important;
 }
 
 .highcharts-axis-line,
-.highcharts-tick {
+.highcharts-tick 
+{
     stroke: #ccd6eb !important;
 }
 
 .highcharts-axis-title,
-.highcharts-axis-labels text {
+.highcharts-axis-labels text 
+{
     fill: #666666 !important;
 }
 
-.highcharts-grid-line {
+.highcharts-grid-line 
+{
     stroke: #e6e6e6 !important;
 }
 
-.highcharts-series-0 {
+.highcharts-series-0 
+{
     stroke: #2caffe !important;
 }
 
-.highcharts-series-1 {
+.highcharts-series-1 
+{
     stroke: #544fc5 !important;
 }
 
-/* Highcharts dark mode */
-.dark .highcharts-background {
+
+.dark .highcharts-background 
+{
     fill: #14161a !important;
 }
 
 .dark .highcharts-axis-line,
-.dark .highcharts-tick {
+.dark .highcharts-tick 
+{
     stroke: #505053 !important;
 }
 
 .dark .highcharts-axis-title,
-.dark .highcharts-axis-labels text {
+.dark .highcharts-axis-labels text 
+{
     fill: #cccccc !important;
 }
 
-.dark .highcharts-grid-line {
+.dark .highcharts-grid-line 
+{
     stroke: #404043 !important;
 }
 
-.dark .highcharts-series-0 {
+.dark .highcharts-series-0 
+{
     stroke: #2caffe !important;
 }
 
-.dark .highcharts-series-1 {
+.dark .highcharts-series-1 
+{
     stroke: #00e272 !important;
 }
 
-.dark .highcharts-tooltip-box {
+.dark .highcharts-tooltip-box 
+{
     fill: #2a2a2b !important;
     stroke: #505053 !important;
 }
 
-.dark .highcharts-label text {
+.dark .highcharts-label text 
+{
     fill: #cccccc !important;
 }

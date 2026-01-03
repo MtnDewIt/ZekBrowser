@@ -1,13 +1,16 @@
-.mods-card h4{
+.mods-card h4
+{
     margin-bottom:0.75rem;
     font-weight:600;
 }
 
-.mods-card .mod-entry{
+.mods-card .mod-entry
+{
     padding:0.125rem 0;
 }
 
-.mods-card .mod-name{
+.mods-card .mod-name
+{
     display:inline-block;
     max-width:100%;
     white-space:nowrap;
@@ -15,20 +18,23 @@
     text-overflow:ellipsis;
 }
 
-.mods-card .mod-author{
-    font-size:0.8125rem; /* text-xs */
+.mods-card .mod-author
+{
+    font-size:0.8125rem;
     opacity:0.65;
     margin-top:0.125rem;
 }
 
-.mods-card .mod-version{
+.mods-card .mod-version
+{
     display:inline-block;
-    font-size:0.75rem; /* text-xs */
+    font-size:0.75rem;
     opacity:0.5;
     margin-left:0rem;
 }
 
-.mods-card .mod-website a{
+.mods-card .mod-website a
+{
     display:block;
     font-size:0.8125rem;
     margin-top:0.25rem;
@@ -39,6 +45,7 @@
     white-space:nowrap;
 }
 
-.mods-card .mod-website a:hover{
+.mods-card .mod-website a:hover
+{
     text-decoration:underline;
 }

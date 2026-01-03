@@ -1,6 +1,7 @@
 import { ValidationError } from '@/exceptions/ValidationError';
 
-export class ElDewritoServer {
+export class ElDewritoServer 
+{
     ip: string;
     name: string;
     port: number;
@@ -36,7 +37,8 @@ export class ElDewritoServer {
     firstSeenAt: string;
     reverseDns?: string;
 
-    constructor(data: {
+    constructor(data: 
+    {
         ip: string;
         name: string;
         port: number;
@@ -70,14 +72,17 @@ export class ElDewritoServer {
         firstSeenAt: string;
         reverseDns?: string;
         mods?: object;
-    }) {
+    }) 
+    {
         ElDewritoServer.validate(data);
         Object.assign(this, data);
 
-        if (typeof data.mods === 'object') {
+        if (typeof data.mods === 'object') 
+        {
             this.mods = [];
 
-            Object.entries(data.mods).forEach(([id, data]) => {
+            Object.entries(data.mods).forEach(([id, data]) => 
+            {
                 this.mods.push({
                     id: id,
                     ...data,
@@ -86,15 +91,18 @@ export class ElDewritoServer {
         }
     }
 
-    static validate(data: any): void {
+    static validate(data: any): void 
+    {
         const errors: string[] = [];
 
-        if (typeof data !== 'object' || data === null) {
+        if (typeof data !== 'object' || data === null) 
+        {
             errors.push('data is not an object');
             throw new ValidationError('Server validation failed', errors);
         }
 
-        const rules: [string, boolean][] = [
+        const rules: [string, boolean][] = 
+        [
             ['ip', typeof data.ip === 'string'],
             ['name', typeof data.name === 'string'],
             ['port', typeof data.port === 'number'],
@@ -130,31 +138,43 @@ export class ElDewritoServer {
             ['mods', typeof data.mods === 'undefined' || typeof data.mods === 'object'],
         ];
 
-        for (const [field, passed] of rules) {
-            if (!passed) {
+        for (const [field, passed] of rules) 
+        {
+            if (!passed) 
+            {
                 errors.push(`${field} "${data[field]}" is invalid`);
             }
         }
 
-        if (errors.length > 0) {
+        if (errors.length > 0) 
+        {
             throw new ValidationError('Server validation failed', errors);
         }
     }
 
-    statusFormatted(): string {
-        if (this.numPlayers > 0) {
-            if (this.status === 'InLobby') {
+    statusFormatted(): string 
+    {
+        if (this.numPlayers > 0) 
+        {
+            if (this.status === 'InLobby') 
+            {
                 return 'In lobby';
-            } else {
+            } 
+            else 
+            {
                 return `Playing ${this.variant} on ${this.map}`;
             }
-        } else {
+        } 
+        else 
+        {
             return 'Waiting for players...';
         }
     }
 
-    versionWithoutTrailingZero(): string {
-        if (this.eldewritoVersionShort.endsWith('.0')) {
+    versionWithoutTrailingZero(): string 
+    {
+        if (this.eldewritoVersionShort.endsWith('.0')) 
+        {
             return this.eldewritoVersionShort.slice(0, -2);
         }
 

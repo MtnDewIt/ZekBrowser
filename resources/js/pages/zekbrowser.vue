@@ -9,7 +9,8 @@ import 'highcharts/css/highcharts.css';
 import { Chart } from 'highcharts-vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 
-interface Props {
+interface Props 
+{
     zekBrowserApi: string;
 }
 
@@ -24,44 +25,56 @@ const browserStatus = ref('Loading...');
 
 const statsStatus = ref('Loading...');
 const chartOptions = ref({
-    accessibility: {
+    accessibility: 
+    {
         enabled: false,
     },
-    chart: {
+    chart: 
+    {
         styledMode: true,
         zoomType: 'x',
     },
-    credits: {
+    credits: 
+    {
         enabled: false,
     },
-    title: {
+    title: 
+    {
         text: null,
     },
-    xAxis: {
+    xAxis: 
+    {
         type: 'datetime',
     },
-    yAxis: {
-        title: {
+    yAxis: 
+    {
+        title: 
+        {
             text: null,
         },
     },
-    legend: {
+    legend: 
+    {
         enabled: false,
     },
-    time: {
+    time: 
+    {
         useUTC: false,
     },
 });
 
-function fetchZekBrowser() {
+function fetchZekBrowser() 
+{
     return fetch(props.zekBrowserApi)
         .then((response) => response.json())
-        .then((data) => {
+        .then((data) => 
+        {
             updateCounts(data.count);
 
             const serverArray: object[] = [];
 
-            Object.entries(data.servers).forEach(([ip, server]) => {
+            Object.entries(data.servers).forEach(([ip, server]) => 
+            {
                 serverArray.push({
                     ip: ip,
                     name: server.name,
@@ -100,14 +113,21 @@ function fetchZekBrowser() {
             });
 
             servers.value = [];
-            serverArray.forEach((serverData) => {
-                try {
+            serverArray.forEach((serverData) => 
+            {
+                try 
+                {
                     const server = new ElDewritoServer(serverData);
                     servers.value.push(server);
-                } catch (error) {
-                    if (error instanceof ValidationError) {
+                } 
+                catch (error) 
+                {
+                    if (error instanceof ValidationError) 
+                    {
                         console.warn(`Validation failed for ${serverData.ip}:`, error.errors);
-                    } else {
+                    } 
+                    else 
+                    {
                         console.error(`Unexpected error for server ${serverData.ip}:`, error);
                     }
                 }
@@ -115,13 +135,15 @@ function fetchZekBrowser() {
 
             showBrowser.value = true;
         })
-        .catch((error) => {
+        .catch((error) => 
+        {
             browserStatus.value = 'Whoops, something bad happened.';
             console.error(error);
         });
 }
 
-function updateCounts(count) {
+function updateCounts(count) 
+{
     playerCount.value = count.players;
     serverCount.value = count.servers;
     const rip = playerCount.value === 0 ? ' rip' : '';
@@ -129,16 +151,20 @@ function updateCounts(count) {
     browserStatus.value = `${playerCount.value} players on ${serverCount.value} servers.${rip}`;
 }
 
-function fetchStats() {
+function fetchStats() 
+{
     fetch(`${props.zekBrowserApi}stats`)
         .then((response) => response.json())
-        .then((data) => {
-            chartOptions.value.series = [
+        .then((data) => 
+        {
+            chartOptions.value.series = 
+            [
                 {
                     name: 'Players',
                     data: data.players,
                     turboThreshold: 10000,
-                    marker: {
+                    marker: 
+                    {
                         enabled: false
                     },
                 },
@@ -146,7 +172,8 @@ function fetchStats() {
                     name: 'Servers',
                     data: data.servers,
                     turboThreshold: 10000,
-                    marker: {
+                    marker: 
+                    {
                         enabled: false
                     },
                 },
@@ -154,7 +181,8 @@ function fetchStats() {
 
             statsStatus.value = '';
         })
-        .catch((error) => {
+        .catch((error) => 
+        {
             statsStatus.value = 'Whoops, something bad happened.';
             console.error(error);
         });
@@ -165,34 +193,45 @@ let refreshTimer: number | null = null;
 
 const isRefreshing = ref(false);
 
-async function handleRefresh() {
+async function handleRefresh() 
+{
     isRefreshing.value = true;
     const minDelay = new Promise(resolve => setTimeout(resolve, 600));
-    try {
+    try 
+    {
         await Promise.all([fetchZekBrowser(), minDelay]);
-    } catch (error) {
+    } 
+    catch (error) 
+    {
         console.error('Manual refresh failed:', error);
-    } finally {
+    } 
+    finally 
+    {
         isRefreshing.value = false;
     }
 }
 
-onMounted(async () => {
+onMounted(async () => 
+{
     fetchZekBrowser();
     fetchStats();
     
     // Set up auto-refresh every 30 seconds
-    refreshTimer = globalThis.setInterval(() => {
+    refreshTimer = globalThis.setInterval(() => 
+    {
         fetchZekBrowser();
     }, REFRESH_INTERVAL);
 });
 
-onUnmounted(() => {
+onUnmounted(() => 
+{
     // Clean up the timer when component is destroyed
-    if (refreshTimer !== null) {
+    if (refreshTimer !== null) 
+    {
         clearInterval(refreshTimer);
     }
 });
+
 </script>
 
 <template>
@@ -239,18 +278,19 @@ onUnmounted(() => {
             </div>
         </div>
     </section>
-
 </template>
 
 <style scoped>
-.container-flex {
+.container-flex 
+{
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
 }
 
-.container-flex-flex {
+.container-flex-flex 
+{
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -260,13 +300,15 @@ onUnmounted(() => {
     width: min(100%, calc(100vh * 16 / 9));
 }
 
-.header-container {
+.header-container 
+{
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.header-container-stats {
+.header-container-stats 
+{
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -274,18 +316,21 @@ onUnmounted(() => {
     margin-bottom: 1rem;
 }
 
-.header-left {
+.header-left 
+{
     display: flex;
     flex-direction: column;
 }
 
-.header-right {
+.header-right 
+{
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.refresh-button {
+.refresh-button 
+{
     background: none;
     border: none;
     cursor: pointer;
@@ -297,15 +342,18 @@ onUnmounted(() => {
     transition: all 0.15s ease;
 }
 
-.refresh-button:hover {
+.refresh-button:hover 
+{
     background-color: rgba(0, 0, 0, 0.08);
 }
 
-.refresh-button:active {
+.refresh-button:active 
+{
     transform: scale(0.95);
 }
 
-.icon-mask {
+.icon-mask 
+{
     display: inline-block;
     width: 20px;
     height: 20px;
@@ -315,30 +363,37 @@ onUnmounted(() => {
     mask-position: center;
 }
 
-.icon-refresh {
+.icon-refresh 
+{
     mask-image: url('/assets/icons/refresh.svg');
 }
 
-.animate-spin {
+.animate-spin 
+{
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    from {
+@keyframes spin 
+{
+    from 
+    {
         transform: rotate(0deg);
     }
-    to {
+    to 
+    {
         transform: rotate(360deg);
     }
 }
 </style>
 
 <style>
-:root {
+:root 
+{
     --background: var(--bulma-body-background-color);
 }
 
-.dark {
+.dark 
+{
     background-color: var(--background);
 }
 </style>

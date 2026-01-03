@@ -1,4 +1,5 @@
 <script setup lang="ts">
+
 import { useAppearance } from '@/composables/useAppearance';
 import { computed } from 'vue';
 
@@ -6,7 +7,8 @@ const { appearance, updateAppearance } = useAppearance();
 
 const isDark = computed(() => appearance.value === 'dark');
 
-const toggleTheme = () => {
+const toggleTheme = () => 
+{
     const newTheme = isDark.value ? 'light' : 'dark';
     updateAppearance(newTheme);
 };
@@ -17,8 +19,7 @@ const toggleTheme = () => {
         @click="toggleTheme"
         class="theme-toggle"
         :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-        title="Toggle theme"
-    >
+        title="Toggle theme">
         <div class="toggle-track" :class="{ active: isDark }">
             <div class="toggle-thumb">
                 <img
@@ -43,7 +44,8 @@ const toggleTheme = () => {
 </template>
 
 <style scoped>
-.theme-toggle {
+.theme-toggle 
+{
     background: none;
     border: none;
     cursor: pointer;
@@ -52,15 +54,18 @@ const toggleTheme = () => {
     transition: background-color 0.2s;
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover 
+{
     background-color: rgba(0, 0, 0, 0.05);
 }
 
-:global(.dark) .theme-toggle:hover {
+:global(.dark) .theme-toggle:hover 
+{
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-.toggle-track {
+.toggle-track 
+{
     width: 48px;
     height: 26px;
     background-color: #cbd5e0;
@@ -70,19 +75,23 @@ const toggleTheme = () => {
     position: relative;
 }
 
-.toggle-track.active {
+.toggle-track.active 
+{
     background-color: #4a5568;
 }
 
-:global(.dark) .toggle-track {
+:global(.dark) .toggle-track 
+{
     background-color: #4a5568;
 }
 
-:global(.dark) .toggle-track.active {
+:global(.dark) .toggle-track.active 
+{
     background-color: #cbd5e0;
 }
 
-.toggle-thumb {
+.toggle-thumb 
+{
     width: 20px;
     height: 20px;
     background-color: white;
@@ -94,16 +103,19 @@ const toggleTheme = () => {
     color: #4a5568;
 }
 
-.active .toggle-thumb {
+.active .toggle-thumb 
+{
     transform: translateX(22px);
 }
 
-:global(.dark) .toggle-thumb {
+:global(.dark) .toggle-thumb 
+{
     background-color: #2d3748;
     color: #f7fafc;
 }
 
-:global(.dark) .active .toggle-thumb {
+:global(.dark) .active .toggle-thumb 
+{
     background-color: white;
     color: #2d3748;
 }

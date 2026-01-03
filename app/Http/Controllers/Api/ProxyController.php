@@ -19,12 +19,15 @@ class ProxyController extends Controller
 
     public function index()
     {
-        try {
+        try 
+        {
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/");
             
             return response($response->body(), $response->status())
                 ->header('Content-Type', $this->applicationPath);
-        } catch (\Exception $e) {
+        } 
+        catch (\Exception $e) 
+        {
             return response()->json([
                 'error' => 'Failed to fetch server data',
                 'message' => $e->getMessage()
@@ -34,12 +37,15 @@ class ProxyController extends Controller
 
     public function stats()
     {
-        try {
+        try 
+        {
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/stats");
             
             return response($response->body(), $response->status())
                 ->header('Content-Type', $this->applicationPath);
-        } catch (\Exception $e) {
+        } 
+        catch (\Exception $e) 
+        {
             return response()->json([
                 'error' => 'Failed to fetch stats data',
                 'message' => $e->getMessage()
@@ -50,25 +56,32 @@ class ProxyController extends Controller
     public function serviceRecord(Request $request)
     {
         $json = [];
-        try {
+        
+        try 
+        {
             $json = $request->json()->all();
-        } catch (\Exception $e) {
+        } 
+        catch (Exception $e) 
+        {
             $json = [];
         }
 
-        // Accept uid from query string or JSON body
         $uid = $request->query('uid') ?? ($json['uid'] ?? null);
 
-        if (!isset($uid) || !is_string($uid) || $uid === '') {
+        if (!isset($uid) || !is_string($uid) || $uid === '') 
+        {
             return response()->json(['error' => 'Missing or invalid uid'], 400);
         }
 
-        try {
+        try 
+        {
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/servicerecord", ['uid' => $uid]);
 
             return response($response->body(), $response->status())
                 ->header('Content-Type', $this->applicationPath);
-        } catch (\Exception $e) {
+        } 
+        catch (Exception $e) 
+        {
             return response()->json([
                 'error' => 'Failed to fetch service record',
                 'message' => $e->getMessage()

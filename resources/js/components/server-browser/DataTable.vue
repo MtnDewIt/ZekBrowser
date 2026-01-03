@@ -1,46 +1,74 @@
 <script setup lang="ts" generic="TData, TValue">
-import type {
+
+import
+{
     ColumnDef,
     ColumnFiltersState,
     SortingState,
-} from '@tanstack/vue-table';
-import {
+} 
+from '@tanstack/vue-table';
+
+import 
+{
     FlexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
     useVueTable,
-} from '@tanstack/vue-table';
-import {
+} 
+from '@tanstack/vue-table';
+
+import 
+{
     Table,
     TableBody,
     TableCell,
     TableHead,
     TableHeader,
     TableRow,
-} from '@/components/ui/table';
+} 
+from '@/components/ui/table';
+
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { valueUpdater } from '@/lib/utils';
 import { ref } from 'vue';
 
-const props = defineProps<{
+const props = defineProps<
+{
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
 }>();
 
-const sorting = ref<SortingState>([
-    { id: 'numPlayers', desc: true } // Sort by number of players descending by default
+const sorting = ref<SortingState>(
+[
+    { 
+        id: 'numPlayers', 
+        desc: true 
+    }
 ]);
 
 const columnFilters = ref<ColumnFiltersState>([])
 const globalFilter = ref('')
 const searchMode = ref<'all' | 'name' | 'host' | 'mods'>('all')
-const searchOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Server Name', value: 'name' },
-    { label: 'Host', value: 'host' },
-    { label: 'Mods', value: 'mods' },
+const searchOptions = 
+[
+    { 
+        label: 'All', 
+        value: 'all' 
+    },
+    { 
+        label: 'Server Name', 
+        value: 'name' 
+    },
+    { 
+        label: 'Host', 
+        value: 'host' 
+    },
+    { 
+        label: 'Mods', 
+        value: 'mods' 
+    },
 ]
 
 const table = useVueTable({
@@ -52,44 +80,60 @@ const table = useVueTable({
     onColumnFiltersChange: updaterOrValue => valueUpdater(updaterOrValue, columnFilters),
     onGlobalFilterChange: updaterOrValue => valueUpdater(updaterOrValue, globalFilter),
     getFilteredRowModel: getFilteredRowModel(),
-    globalFilterFn: (row, columnId, filterValue) => {
+    globalFilterFn: (row, columnId, filterValue) => 
+    {
         const searchValue = String(filterValue).toLowerCase();
         const mode = searchMode.value;
         
         if (!searchValue) return true;
         
-        // Search by selected mode
-        if (mode === 'name') {
+        if (mode === 'name') 
+        {
             const name = String(row.getValue('name') || '').toLowerCase();
             return name.includes(searchValue);
         }
         
-        if (mode === 'host') {
+        if (mode === 'host') 
+        {
             const host = String(row.getValue('hostPlayer') || '').toLowerCase();
             return host.includes(searchValue);
         }
         
-        if (mode === 'mods') {
+        if (mode === 'mods') 
+        {
             const mods = row.original?.mods || [];
+
             return mods.some(mod => 
                 String(mod?.mod_name || '').toLowerCase().includes(searchValue)
             );
         }
-        
-        // 'all' mode - search across all fields
+
         const name = String(row.getValue('name') || '').toLowerCase();
         const host = String(row.getValue('hostPlayer') || '').toLowerCase();
         const mods = row.original?.mods || [];
+
         const modMatch = mods.some(mod => 
             String(mod?.mod_name || '').toLowerCase().includes(searchValue)
         );
         
         return name.includes(searchValue) || host.includes(searchValue) || modMatch;
     },
-    state: {
-        get sorting() { return sorting.value },
-        get columnFilters() { return columnFilters.value },
-        get globalFilter() { return globalFilter.value },
+    state: 
+    {
+        get sorting() 
+        { 
+            return sorting.value 
+        },
+        
+        get columnFilters() 
+        { 
+            return columnFilters.value 
+        },
+
+        get globalFilter() 
+        { 
+            return globalFilter.value 
+        },
     },
 });
 </script>

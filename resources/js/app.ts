@@ -9,13 +9,15 @@ import { ZiggyVue } from 'ziggy-js';
 createInertiaApp({
     title: (title) => (`${title} - ElDewrito Server Browser`),
     resolve: (name) => resolvePageComponent(`./pages/${name}.vue`, import.meta.glob<DefineComponent>('./pages/**/*.vue')),
-    setup({ el, App, props, plugin }) {
+    setup({ el, App, props, plugin }) 
+    {
         createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
             .mount(el);
     },
-    progress: {
+    progress: 
+    {
         color: '#4B5563',
     },
 });

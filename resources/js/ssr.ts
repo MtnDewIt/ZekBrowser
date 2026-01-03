@@ -14,15 +14,19 @@ createServer((page) =>
         setup: ({ App, props, plugin }) =>
             createSSRApp({ render: () => h(App, props) })
                 .use(plugin)
-                .use(ZiggyVue, {
+                .use(ZiggyVue, 
+                {
                     ...page.props.ziggy,
                     location: new URL(page.props.ziggy.location),
                 }),
     }),
-    { cluster: true },
+    { 
+        cluster: true 
+    },
 );
 
-function resolvePage(name: string) {
+function resolvePage(name: string) 
+{
     const pages = import.meta.glob<DefineComponent>('./pages/**/*.vue');
 
     return resolvePageComponent<DefineComponent>(`./pages/${name}.vue`, pages);

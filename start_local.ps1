@@ -16,17 +16,14 @@ npm run build
 
 Write-Host "Starting servers..."
 
-# Laravel on port 8000 (handles both web and API proxying)
 $laravel = Start-Process cmd `
     -ArgumentList '/k "php artisan serve --host=127.0.0.1 --port=8000"' `
     -PassThru
 
-# Python on port 8001 (internal only)
 $python = Start-Process cmd `
     -ArgumentList '/k "python -m uvicorn server:app --host 127.0.0.1 --port 8001"' `
     -PassThru
 
-# Vite for hot module replacement
 $vite = Start-Process cmd `
     -ArgumentList '/k "npm run dev"' `
     -PassThru

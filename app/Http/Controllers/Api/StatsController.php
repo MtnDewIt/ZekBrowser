@@ -16,7 +16,8 @@ class StatsController extends Controller
         $players = [];
         $servers = [];
 
-        foreach ($stats as $stat) {
+        foreach ($stats as $stat) 
+        {
             $timestamp = $stat->recorded_at->timestamp * 1000;
             $players[] = [$timestamp, $stat->player_count];
             $servers[] = [$timestamp, $stat->server_count];

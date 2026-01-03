@@ -1,4 +1,5 @@
 <script setup lang="ts">
+
 import { Download, Package } from 'lucide-vue-next';
 
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import '../../../css/ModsCard.css';
 
-interface Props {
+interface Props 
+{
     mods?: object[];
     jsonUrl?: string;
     showAsNumber?: boolean;
@@ -18,7 +20,8 @@ const props = defineProps<Props>();
 
 const total = props.mods?.reduce((acc, mod) => acc + mod.package_size, 0);
 
-const size = (bytes) => {
+const size = (bytes) => 
+{
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     if (bytes == 0) return '0 b';
 

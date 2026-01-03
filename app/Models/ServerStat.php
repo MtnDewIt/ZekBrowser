@@ -6,13 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServerStat extends Model
 {
-    protected $fillable = [
+    protected $fillable = 
+    [
         'player_count',
         'server_count',
         'recorded_at',
     ];
 
-    protected $casts = [
+    protected $casts = 
+    [
         'recorded_at' => 'datetime',
     ];
 }
