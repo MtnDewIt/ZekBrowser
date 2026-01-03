@@ -17,6 +17,16 @@ interface Props {
 const props = defineProps<Props>();
 const passworded = computed(() => !!props.passworded);
 
+// Check if server version supports ranks (0.7+)
+const supportsRanks = computed(() => {
+    if (!props.serverVersion) return false;
+    const match = props.serverVersion.match(/^(\d+)\.(\d+)/);
+    if (!match) return false;
+    const major = parseInt(match[1]);
+    const minor = parseInt(match[2]);
+    return major > 0 || (major === 0 && minor >= 7);
+});
+
 // Emblem cache
 const emblemCache = reactive(new Map<string, string>());
 const resolvedStats = reactive(new Map<string, string>());
@@ -529,7 +539,7 @@ const groupedPlayers = computed(() => {
                                                         <span v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="service-tag">
                                                             {{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}
                                                         </span>
-                                                        <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
+                                                        <img v-if="supportsRanks && getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
                                                     </div>
                                                 </div>
                                             </td>
@@ -565,7 +575,7 @@ const groupedPlayers = computed(() => {
                                                     <span v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="service-tag">
                                                         {{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}
                                                     </span>
-                                                    <img v-if="getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
+                                                    <img v-if="supportsRanks && getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
                                                 </div>
                                             </div>
                                         </td>
