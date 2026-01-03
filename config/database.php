@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Str;
 
-return 
+return
 [
     /*
     |--------------------------------------------------------------------------
@@ -29,9 +29,9 @@ return
     |
     */
 
-    'connections' => 
+    'connections' =>
     [
-        'sqlite' => 
+        'sqlite' =>
         [
             'driver' => 'sqlite',
             'url' => env('DB_URL'),
@@ -43,7 +43,7 @@ return
             'synchronous' => null,
         ],
 
-        'mysql' => 
+        'mysql' =>
         [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
@@ -64,7 +64,7 @@ return
             ]) : [],
         ],
 
-        'mariadb' => 
+        'mariadb' =>
         [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
@@ -85,7 +85,7 @@ return
             ]) : [],
         ],
 
-        'pgsql' => 
+        'pgsql' =>
         [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
@@ -101,7 +101,7 @@ return
             'sslmode' => 'prefer',
         ],
 
-        'sqlsrv' => 
+        'sqlsrv' =>
         [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),
@@ -130,7 +130,7 @@ return
     |
     */
 
-    'migrations' => 
+    'migrations' =>
     [
         'table' => 'migrations',
         'update_date_on_publish' => true,
@@ -147,19 +147,19 @@ return
     |
     */
 
-    'redis' => 
+    'redis' =>
     [
 
         'client' => env('REDIS_CLIENT', 'phpredis'),
 
-        'options' => 
+        'options' =>
         [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
             'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_database_'),
             'persistent' => env('REDIS_PERSISTENT', false),
         ],
 
-        'default' => 
+        'default' =>
         [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
@@ -169,7 +169,7 @@ return
             'database' => env('REDIS_DB', '0'),
         ],
 
-        'cache' => 
+        'cache' =>
         [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),

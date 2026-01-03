@@ -1,6 +1,6 @@
 <?php
 
-return 
+return
 [
     /*
     |--------------------------------------------------------------------------
@@ -28,14 +28,14 @@ return
     |
     */
 
-    'connections' => 
+    'connections' =>
     [
-        'sync' => 
+        'sync' =>
         [
             'driver' => 'sync',
         ],
 
-        'database' => 
+        'database' =>
         [
             'driver' => 'database',
             'connection' => env('DB_QUEUE_CONNECTION'),
@@ -45,7 +45,7 @@ return
             'after_commit' => false,
         ],
 
-        'beanstalkd' => 
+        'beanstalkd' =>
         [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),
@@ -55,7 +55,7 @@ return
             'after_commit' => false,
         ],
 
-        'sqs' => 
+        'sqs' =>
         [
             'driver' => 'sqs',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -67,7 +67,7 @@ return
             'after_commit' => false,
         ],
 
-        'redis' => 
+        'redis' =>
         [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
@@ -89,7 +89,7 @@ return
     |
     */
 
-    'batching' => 
+    'batching' =>
     [
         'database' => env('DB_CONNECTION', 'sqlite'),
         'table' => 'job_batches',
@@ -108,7 +108,7 @@ return
     |
     */
 
-    'failed' => 
+    'failed' =>
     [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
         'database' => env('DB_CONNECTION', 'sqlite'),

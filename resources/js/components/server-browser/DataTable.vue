@@ -1,16 +1,11 @@
 <script setup lang="ts" generic="TData, TValue">
 
-import
+import 
 {
     ColumnDef,
     ColumnFiltersState,
-    SortingState,
-} 
-from '@tanstack/vue-table';
-
-import 
-{
     FlexRender,
+    SortingState,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,

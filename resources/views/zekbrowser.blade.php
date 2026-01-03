@@ -5,19 +5,19 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         
         <script>
-            (function() 
+            (function()
             {
                 const appearance = '{{ $appearance ?? "light" }}';
                 const root = document.documentElement;
 
                 window.__INITIAL_APPEARANCE__ = appearance;
                 
-                if (appearance === 'dark') 
+                if (appearance === 'dark')
                 {
                     root.classList.add('dark');
                     root.setAttribute('data-theme', 'dark');
-                } 
-                else 
+                }
+                else
                 {
                     root.classList.remove('dark');
                     root.setAttribute('data-theme', 'light');

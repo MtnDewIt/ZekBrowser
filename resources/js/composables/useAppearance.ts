@@ -6,7 +6,7 @@ const appearance = ref<Appearance>('light');
 
 export function updateTheme(value: Appearance) 
 {
-    if (typeof window === 'undefined') 
+    if (typeof globalThis.window === 'undefined') 
     {
         return;
     }
@@ -40,9 +40,9 @@ export function useAppearance()
 {
     onMounted(() => 
     {
-        if (typeof window !== 'undefined' && (window as any).__INITIAL_APPEARANCE__) 
+        if (typeof globalThis.window !== 'undefined' && (globalThis.window as any).__INITIAL_APPEARANCE__) 
         {
-            appearance.value = (window as any).__INITIAL_APPEARANCE__ as Appearance;
+            appearance.value = (globalThis.window as any).__INITIAL_APPEARANCE__ as Appearance;
         }
     });
 

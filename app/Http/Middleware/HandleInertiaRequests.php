@@ -23,16 +23,16 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
-        return 
+        return
         [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
-            'auth' => 
+            'auth' =>
             [
                 'user' => $request->user(),
             ],
-            'ziggy' => 
+            'ziggy' =>
             [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
@@ -46,7 +46,7 @@ class HandleInertiaRequests extends Middleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Route::currentRouteName() === 'home') 
+        if (Route::currentRouteName() === 'home')
         {
             $this->rootView = 'zekbrowser';
         }

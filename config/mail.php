@@ -1,6 +1,6 @@
 <?php
 
-return 
+return
 [
     /*
     |--------------------------------------------------------------------------
@@ -35,9 +35,9 @@ return
     |
     */
 
-    'mailers' => 
+    'mailers' =>
     [
-        'smtp' => 
+        'smtp' =>
         [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
@@ -50,57 +50,57 @@ return
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
-        'ses' => 
+        'ses' =>
         [
             'transport' => 'ses',
         ],
 
-        'postmark' => 
+        'postmark' =>
         [
             'transport' => 'postmark',
             // 'message_stream_id' => env('POSTMARK_MESSAGE_STREAM_ID'),
-            // 'client' => 
+            // 'client' =>
             // [
             //     'timeout' => 5,
             // ],
         ],
 
-        'resend' => 
+        'resend' =>
         [
             'transport' => 'resend',
         ],
 
-        'sendmail' => 
+        'sendmail' =>
         [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
         ],
 
-        'log' => 
+        'log' =>
         [
             'transport' => 'log',
             'channel' => env('MAIL_LOG_CHANNEL'),
         ],
 
-        'array' => 
+        'array' =>
         [
             'transport' => 'array',
         ],
 
-        'failover' => 
+        'failover' =>
         [
             'transport' => 'failover',
-            'mailers' => 
+            'mailers' =>
             [
                 'smtp',
                 'log',
             ],
         ],
 
-        'roundrobin' => 
+        'roundrobin' =>
         [
             'transport' => 'roundrobin',
-            'mailers' => 
+            'mailers' =>
             [
                 'ses',
                 'postmark',
@@ -120,7 +120,7 @@ return
     |
     */
 
-    'from' => 
+    'from' =>
     [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', 'Example'),

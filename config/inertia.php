@@ -1,6 +1,6 @@
 <?php
 
-return 
+return
 [
     /*
     |--------------------------------------------------------------------------
@@ -15,7 +15,7 @@ return
     |
     */
 
-    'ssr' => 
+    'ssr' =>
     [
         'enabled' => true,
         'url' => 'http://127.0.0.1:13714',
@@ -33,16 +33,16 @@ return
     |
     */
 
-    'testing' => 
+    'testing' =>
     [
         'ensure_pages_exist' => true,
 
-        'page_paths' => 
+        'page_paths' =>
         [
             resource_path('js/pages'),
         ],
 
-        'page_extensions' => 
+        'page_extensions' =>
         [
             'js',
             'jsx',

@@ -1,6 +1,6 @@
 <?php
 
-return 
+return
 [
     /*
     |--------------------------------------------------------------------------
@@ -13,7 +13,7 @@ return
     |
     */
 
-    'defaults' => 
+    'defaults' =>
     [
         'guard' => env('AUTH_GUARD', 'web'),
         'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
@@ -36,9 +36,9 @@ return
     |
     */
 
-    'guards' => 
+    'guards' =>
     [
-        'web' => 
+        'web' =>
         [
             'driver' => 'session',
             'provider' => 'users',
@@ -62,15 +62,15 @@ return
     |
     */
 
-    'providers' => 
+    'providers' =>
     [
-        'users' => 
+        'users' =>
         [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
         ],
 
-        // 'users' => 
+        // 'users' =>
         // [
         //     'driver' => 'database',
         //     'table' => 'users',
@@ -96,9 +96,9 @@ return
     |
     */
 
-    'passwords' => 
+    'passwords' =>
     [
-        'users' => 
+        'users' =>
         [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),

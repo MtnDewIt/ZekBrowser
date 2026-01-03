@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('server_stats', function (Blueprint $table) 
+        Schema::create('server_stats', function (Blueprint $table)
         {
             $table->id();
             $table->integer('player_count')->default(0);

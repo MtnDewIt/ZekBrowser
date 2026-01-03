@@ -1,6 +1,6 @@
 <?php
 
-return 
+return
 [
     /*
     |--------------------------------------------------------------------------
@@ -28,9 +28,9 @@ return
     |
     */
 
-    'disks' => 
+    'disks' =>
     [
-        'local' => 
+        'local' =>
         [
             'driver' => 'local',
             'root' => storage_path('app/private'),
@@ -39,7 +39,7 @@ return
             'report' => false,
         ],
 
-        'public' => 
+        'public' =>
         [
             'driver' => 'local',
             'root' => storage_path('app/public'),
@@ -49,7 +49,7 @@ return
             'report' => false,
         ],
 
-        's3' => 
+        's3' =>
         [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -75,7 +75,7 @@ return
     |
     */
 
-    'links' => 
+    'links' =>
     [
         public_path('storage') => storage_path('app/public'),
     ],

@@ -19,14 +19,14 @@ class ProxyController extends Controller
 
     public function index()
     {
-        try 
+        try
         {
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/");
             
             return response($response->body(), $response->status())
                 ->header('Content-Type', $this->applicationPath);
-        } 
-        catch (\Exception $e) 
+        }
+        catch (\Exception $e)
         {
             return response()->json([
                 'error' => 'Failed to fetch server data',
@@ -37,14 +37,14 @@ class ProxyController extends Controller
 
     public function stats()
     {
-        try 
+        try
         {
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/stats");
             
             return response($response->body(), $response->status())
                 ->header('Content-Type', $this->applicationPath);
-        } 
-        catch (\Exception $e) 
+        }
+        catch (\Exception $e)
         {
             return response()->json([
                 'error' => 'Failed to fetch stats data',
@@ -57,11 +57,11 @@ class ProxyController extends Controller
     {
         $json = [];
         
-        try 
+        try
         {
             $json = $request->json()->all();
-        } 
-        catch (Exception $e) 
+        }
+        catch (\Exception $e)
         {
             $json = [];
         }
@@ -73,14 +73,14 @@ class ProxyController extends Controller
             return response()->json(['error' => 'Missing or invalid uid'], 400);
         }
 
-        try 
+        try
         {
             $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/servicerecord", ['uid' => $uid]);
 
             return response($response->body(), $response->status())
                 ->header('Content-Type', $this->applicationPath);
-        } 
-        catch (Exception $e) 
+        }
+        catch (\Exception $e)
         {
             return response()->json([
                 'error' => 'Failed to fetch service record',

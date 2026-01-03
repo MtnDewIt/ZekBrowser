@@ -1,6 +1,6 @@
 <?php
 
-return 
+return
 [
     App\Providers\AppServiceProvider::class,
 ];
