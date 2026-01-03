@@ -12,13 +12,13 @@ from typing import Dict, List, Set, Any, Optional
 import httpx
 import uvicorn
 import re
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 # --- Configuration ---
 DEWRITO_JSON_PATH = "dewrito.json"
 REFRESH_INTERVAL = 15  # seconds
-STATS_INTERVAL = 300   # 5 minutes in seconds
+STATS_INTERVAL = 300   # seconds
 API_TIMEOUT = 5.0      # seconds
 DB_PATH = "database/database.sqlite"
 LEGACY_STATS_URL = "https://eldewrito.pauwlo.com/api/stats"
@@ -44,8 +44,7 @@ async def fetch_legacy_stats() -> Optional[Dict[str, List[List[int]]]]:
             response = await client.get(LEGACY_STATS_URL, timeout=30.0)
             response.raise_for_status()
             data = response.json()
-            
-            # Validate structure
+
             if "players" in data and "servers" in data:
                 if isinstance(data["players"], list) and isinstance(data["servers"], list):
                     logger.info(f"Successfully fetched {len(data['players'])} historical data points")
@@ -62,17 +61,14 @@ def populate_stats_from_legacy(legacy_data: Dict[str, List[List[int]]]):
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        
-        # Combine players and servers data by timestamp
+
         players_dict = {entry[0]: entry[1] for entry in legacy_data.get("players", [])}
         servers_dict = {entry[0]: entry[1] for entry in legacy_data.get("servers", [])}
         
-        # Get all unique timestamps
         all_timestamps = set(players_dict.keys()) | set(servers_dict.keys())
         
         records_added = 0
         for timestamp_ms in sorted(all_timestamps):
-            # Convert milliseconds to datetime
             timestamp_dt = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
             
             player_count = players_dict.get(timestamp_ms, 0)
@@ -96,8 +92,7 @@ async def init_db():
     """Initialize the stats table and populate with legacy data if empty."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
-    # Check if server_stats table exists, if not create it
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS server_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,14 +103,12 @@ async def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # Create index for faster queries
+
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_recorded_at 
         ON server_stats(recorded_at)
     """)
     
-    # Check if table is empty
     cursor.execute("SELECT COUNT(*) FROM server_stats")
     count = cursor.fetchone()[0]
     
@@ -123,8 +116,7 @@ async def init_db():
     conn.close()
     
     logger.info("Database initialized")
-    
-    # If table is empty, try to populate with legacy data
+
     if count == 0:
         logger.info("Stats table is empty, attempting to fetch legacy data...")
         legacy_data = await fetch_legacy_stats()
@@ -364,10 +356,9 @@ async def background_stats_recorder():
 
 @app.on_event("startup")
 async def startup_event():
-    # Initialize database (will populate with legacy data if empty)
     await init_db()
-    
-    # Start background tasks
+
+    # TODO: This could probably be handled a lot better (these async tasks have no kill condition)
     asyncio.create_task(background_refresher())
     asyncio.create_task(background_stats_recorder())
 
@@ -404,12 +395,9 @@ async def get_service_record(uid: Optional[str] = None):
             except Exception:
                 content = resp.text
 
-            # If we received JSON content, attempt to resolve the numeric player id
-            # and fetch the public stats page to extract the player's rank.
             try:
                 player_id = None
                 if isinstance(content, dict):
-                    # top-level id or nested player.id
                     id_val = content.get('id')
                     if not id_val and isinstance(content.get('player'), dict):
                         id_val = content['player'].get('id')
@@ -438,9 +426,6 @@ async def get_service_record(uid: Optional[str] = None):
     except Exception as e:
         logger.exception("Error proxying GET service record request")
         return JSONResponse(status_code=503, content={"error": "Failed to fetch service record", "message": str(e)})
-
-
-# Path-based handler removed — use query string: /api/servicerecord?uid=...
 
 # --- Entry Point ---
 
