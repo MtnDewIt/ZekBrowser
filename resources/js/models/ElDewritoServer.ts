@@ -162,7 +162,8 @@ export class ElDewritoServer
             } 
             else 
             {
-                return `Playing ${this.variant} on ${this.map}`;
+                const mapName = this.map || this.mapFile;
+                return `Playing ${this.variant} on ${mapName}`;
             }
         } 
         else 
