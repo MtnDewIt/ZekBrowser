@@ -11,3 +11,8 @@ Full source code available at: **[https://github.com/MtnDewIt/ZekBrowser](https:
 ## Support
 
 For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/MtnDewIt/ZekBrowser).
+
+## Credits
+
+This project is based on the original work by **pauwlo** — see
+[ElDewrito-Services](https://github.com/Pauwlo/ElDewrito-Services).
