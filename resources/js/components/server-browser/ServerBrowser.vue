@@ -288,7 +288,7 @@ const columns: ColumnDef<ElDewritoServer>[] =
         <div v-if="selected === 'eldewrito'">
             <DataTable :columns="columns" :data="servers" :players="currentPlayers" :servers="currentServers">
                 <template #left>
-                    <div class="min-w-[160px] h-10 -ml-1 flex items-center rounded-md border border-input bg-background px-2">
+                    <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background px-2" style="transform: translateX(11px);">
                         <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <Select v-model="selected" class="ml-0 h-full bg-transparent border-0 p-0" :options="[
@@ -302,7 +302,7 @@ const columns: ColumnDef<ElDewritoServer>[] =
         <div v-else>
             <CartographerBrowser ref="cartoRef">
                 <template #left>
-                    <div class="min-w-[160px] h-10 -ml-1 flex items-center rounded-md border border-input bg-background px-2">
+                    <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background px-2" style="transform: translateX(11px);">
                         <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <Select v-model="selected" class="ml-0 h-full bg-transparent border-0 p-0" :options="[
