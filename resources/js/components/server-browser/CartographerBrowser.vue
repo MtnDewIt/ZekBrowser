@@ -230,10 +230,6 @@ defineExpose({ load });
 
 <template>
   <div class="carto-browser">
-    <div class="flex items-center justify-between mb-2">
-      <!-- header intentionally left blank to match global UI -->
-    </div>
-
     <div v-if="loading">Loading…</div>
     <div v-else-if="error" class="text-red-500">{{ error }}</div>
     <div v-else>
