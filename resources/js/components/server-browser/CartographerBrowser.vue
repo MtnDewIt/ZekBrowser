@@ -9,6 +9,7 @@ interface CartoServer {
   xuid?: string | number;
   server_name?: string;
   map_name?: string;
+  map_id?: number | string;
   gametype?: string;
   players?: { filled?: number; max?: number };
   description?: string;
@@ -49,7 +50,69 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) =>
 
 const columns: ColumnDef<CartoServer>[] = [
   { accessorKey: 'server_name', header: makeSortHeader('Server'), cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [ h('span', { class: 'font-bold!' }, h(UnicodeText, { text: row.getValue('server_name') })) ]) },
+
   { accessorKey: 'map_name', header: makeSortHeader('Map'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('map_name') }) },
+
+  // Custom map column placed to the right of Map: header renders masked SVG so it respects theme
+  {
+    id: 'custom_map',
+    accessorFn: (row: any) => {
+      // determine map id value similar to cell logic
+      let mid: any = null;
+      if (row.map_id !== undefined && row.map_id !== null) mid = row.map_id;
+      else if (row.map_id_2 !== undefined && row.map_id_2 !== null) mid = row.map_id_2;
+      else if (row._decoded_properties && row._decoded_properties.map_id && typeof row._decoded_properties.map_id.value !== 'undefined') mid = row._decoded_properties.map_id.value;
+      if (mid !== null && mid !== undefined && String(mid).trim() !== '') {
+        const midNum = Number(mid);
+        // list copied from MAP_ID_TO_INFO
+        const KNOWN_MAP_IDS = new Set([1,101,105,301,305,401,405,501,505,601,605,701,801,705,805,80,1201,100,60,110,70,1300,10,1302,1400,3001,1200,1001,120,1002,800,1402,50,20,444678,91101,1101,1000,1109,40,30]);
+        return (!Number.isNaN(midNum) && KNOWN_MAP_IDS.has(midNum)) ? 0 : 1;
+      }
+      // unknown map id -> treat as custom
+      return 1;
+    },
+    header: ({ column }: any) => {
+      const state = column.getIsSorted();
+      const icon = h('span', {
+        class: 'icon-mask icon-download-b inline-block w-4 h-4 leading-none text-muted-foreground relative top-[2px]',
+        ariaHidden: 'true',
+      });
+
+      return h(Button,
+        {
+          class: 'gap-0',
+          onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+          title: 'Custom Map',
+        },
+        () => [
+          h('span', { class: 'inline-flex items-center' }, [icon, renderSortIcon(state)])
+        ]
+      );
+    },
+    // Show icon only when the server's map id is NOT one of the known MAP_ID_TO_INFO ids
+    cell: ({ row }) => {
+      const original = row.original || {} as any;
+
+      // List of map ids mirrored from scripts/carto_api.py::MAP_ID_TO_INFO
+      const KNOWN_MAP_IDS = new Set([1,101,105,301,305,401,405,501,505,601,605,701,801,705,805,80,1201,100,60,110,70,1300,10,1302,1400,3001,1200,1001,120,1002,800,1402,50,20,444678,91101,1101,1000,1109,40,30]);
+
+      let mid: any = null;
+      if (original.map_id !== undefined && original.map_id !== null) mid = original.map_id;
+      else if (original.map_id_2 !== undefined && original.map_id_2 !== null) mid = original.map_id_2;
+      else if (original._decoded_properties && original._decoded_properties.map_id && typeof original._decoded_properties.map_id.value !== 'undefined') mid = original._decoded_properties.map_id.value;
+
+      if (mid !== null && mid !== undefined && String(mid).trim() !== '') {
+        const midNum = Number(mid);
+        if (!Number.isNaN(midNum) && KNOWN_MAP_IDS.has(midNum)) {
+          return h('span', { class: 'block mx-auto w-8' }, '');
+        }
+      }
+
+      return h('span', { class: 'inline-flex items-center pl-0 -ml-[0px]' },
+        h('span', { class: 'inline-block w-4 h-4 leading-none text-muted-foreground relative top-[0px] icon-mask icon-download-b', title: 'Custom Map' })
+      );
+    },
+  },
   { accessorKey: 'gametype', header: makeSortHeader('Gametype'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('gametype') }) },
   { accessorKey: 'variant', header: makeSortHeader('Variant'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('variant') }) },
   { id: 'players', accessorFn: (row) => {
@@ -127,11 +190,12 @@ async function load() {
 
     // If the API already returned summarized server objects (from the python script),
     // use them directly. Detect by presence of `server_name` or `map_name` keys.
-    if (list.length > 0 && typeof list[0] === 'object' && (list[0].server_name || list[0].map_name || list[0].gametype)) {
+      if (list.length > 0 && typeof list[0] === 'object' && (list[0].server_name || list[0].map_name || list[0].gametype)) {
       console.debug('Cartographer: received summarized server objects, rendering directly', list.length);
       servers.value = list.map((item: any) => ({
         xuid: item.xuid || item.id || item.server_id,
         server_name: item.server_name || '',
+        map_id: item.map_id ?? item.map_id_2 ?? (item._decoded_properties && item._decoded_properties.map_id ? item._decoded_properties.map_id.value : undefined),
         map_name: item.map_name || '',
         variant: item.variant || '',
         gametype: item.gametype || '',
@@ -151,7 +215,8 @@ async function load() {
         raw: item,
         xuid: item.xuid || item.id || item.server_id,
         server_name: props['1073775152'] || props['1073775141'] || item.name || '',
-        map_name: props['268468743'] || props['268468746'] || '',
+        map_id: props['268468743'] || props['268468746'] || undefined,
+        map_name: props['268468743'] || props['268468746'] ? (props['268468743'] || props['268468746']) : (props['1073775145'] || props['1073775142'] || ''),
         variant: props['1073775144'] || props['1073775147'] || '',
         gametype: props['268468745'] || props['1073775144'] || '',
         players: { filled: item.dwFilledPublicSlots, max: item.dwMaxPublicSlots },

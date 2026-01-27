@@ -122,6 +122,12 @@ body[data-scroll-locked]
         -webkit-mask-image: url('/assets/icons/move-down.svg');
         mask-image: url('/assets/icons/move-down.svg');
     }
+
+    .icon-download-b
+    {
+        -webkit-mask-image: url('/assets/icons/download_b.svg');
+        mask-image: url('/assets/icons/download_b.svg');
+    }
 }
 
 :root 
