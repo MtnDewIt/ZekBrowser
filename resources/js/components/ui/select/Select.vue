@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
 
 const props = defineProps<{
   modelValue: string
-  options: { label: string; value: string }[]
+  options: { label: string; value: string; icon?: string; iconRounded?: boolean }[]
   class?: string
   iconOnly?: boolean
 }>()
@@ -43,13 +43,14 @@ async function positionDropdown() {
   // position fixed relative to viewport so it escapes any overflow clipping
   // align the dropdown's right edge with the anchor element's right edge
   // subtract a small offset so the dropdown sits slightly to the right
-  const OFFSET_PX = 17
-  const rawRight = Math.round(window.innerWidth - rect.right - OFFSET_PX)
-  const right = Math.max(0, rawRight)
+  // For overlay behavior: position dropdown to cover the anchor by using
+  // the anchor's top/left so the list overlays the button.
+  const OFFSET_PX = 0
+  const left = Math.max(0, Math.round(rect.left - OFFSET_PX))
   dropdownStyle.value = {
     position: 'fixed',
-    top: `${rect.bottom}px`,
-    right: `${right}px`,
+    top: `${rect.top}px`,
+    left: `${left}px`,
     minWidth: `${rect.width}px`,
   }
 }
@@ -99,9 +100,10 @@ watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
     </button>
 
     <teleport to="body">
-      <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-1 max-h-80 overflow-auto rounded-md border border-input bg-background text-foreground shadow-lg">
-        <li v-for="opt in options" :key="opt.value" @click.stop="select(opt.value)" class="px-3 py-2 cursor-pointer hover:bg-muted/60 hover:text-foreground active:bg-transparent focus:outline-none">
-          {{ opt.label }}
+      <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-0 max-h-80 overflow-auto rounded-md border border-input bg-background text-foreground shadow-lg">
+        <li v-for="opt in options" :key="opt.value" @click.stop="select(opt.value)" class="px-3 py-2 cursor-pointer hover:bg-muted/60 hover:text-foreground active:bg-transparent focus:outline-none flex items-center">
+          <img v-if="opt.icon" :src="opt.icon" :alt="opt.label" :class="['w-5 h-5 mr-2 object-contain', opt.iconRounded ? 'rounded-full' : '']" />
+          <span class="truncate">{{ opt.label }}</span>
         </li>
       </ul>
     </teleport>

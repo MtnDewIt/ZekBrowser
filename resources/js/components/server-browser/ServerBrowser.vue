@@ -284,11 +284,12 @@ const columns: ColumnDef<ElDewritoServer>[] =
 <template>
     <div>
         <div class="mb-3 flex items-center gap-3">
-            <label class="font-medium flex items-center h-10">Browser</label>
-            <div class="min-w-[160px] h-10 relative top-[1px]">
+            <div class="min-w-[160px] h-10 -ml-1 flex items-center">
+                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-0 object-contain rounded-full" style="transform: translateX(3px);" />
+                <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-0 object-contain rounded-full" style="transform: translateX(3px);" />
                 <Select v-model="selected" :options="[
-                    { label: 'Eldewrito', value: 'eldewrito' },
-                    { label: 'Cartographer', value: 'cartographer' },
+                    { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                    { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
                 ]" />
             </div>
         </div>
