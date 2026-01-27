@@ -240,7 +240,14 @@ defineExpose({ load });
         { label: 'Gametype', value: 'gametype' },
         { label: 'Variant', value: 'variant' },
         { label: 'Description', value: 'description' },
-      ]" :initialSorting="[{ id: 'players', desc: true }]" />
+      ]" :initialSorting="[{ id: 'players', desc: true }]"
+      :players="(servers || []).reduce((acc, s) => acc + (s?.players && typeof s.players === 'object' ? Number(s.players.filled ?? 0) : (typeof s.players === 'number' ? Number(s.players) : 0)), 0)"
+      :servers="(servers || []).length"
+      >
+        <template #left>
+          <slot name="left" />
+        </template>
+      </DataTable>
     </div>
   </div>
 </template>

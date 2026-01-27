@@ -36,6 +36,8 @@ const props = defineProps<
     searchOptions?: { label: string; value: string }[]
     initialSearchMode?: string
     initialSorting?: SortingState
+    players?: number | null
+    servers?: number | null
 }>();
 
 const sorting = ref<SortingState>(props.initialSorting ?? [
@@ -141,7 +143,11 @@ const table = useVueTable({
 
 <template>
 
-    <div class="flex items-center gap-2 py-4">
+    <div class="flex items-center justify-center gap-4 py-4" style="transform: translateY(-56px);">
+        <div class="flex-shrink-0">
+            <slot name="left" />
+        </div>
+
         <div class="relative w-full max-w-sm">
             <Input 
                 class="rounded-md pr-10" 
@@ -151,6 +157,17 @@ const table = useVueTable({
             />
             <div class="absolute right-2 top-1/2 -translate-y-1/2">
                 <Select v-model="searchMode" :options="searchOptions" :iconOnly="true" />
+            </div>
+        </div>
+
+        <div class="ml-3 flex items-center gap-3 text-sm text-muted-foreground">
+            <div class="flex items-center gap-1">
+                <span class="font-semibold">{{ props.players ?? '—' }}</span>
+                <span class="opacity-80">Players</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="font-semibold">{{ props.servers ?? '—' }}</span>
+                <span class="opacity-80">Servers</span>
             </div>
         </div>
     </div>

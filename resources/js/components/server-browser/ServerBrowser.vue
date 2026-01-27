@@ -283,22 +283,35 @@ const columns: ColumnDef<ElDewritoServer>[] =
 
 <template>
     <div>
-        <div class="mb-3 flex items-center gap-3">
-            <div class="min-w-[160px] h-10 -ml-1 flex items-center">
-                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-0 object-contain rounded-full" style="transform: translateX(3px);" />
-                <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-0 object-contain rounded-full" style="transform: translateX(3px);" />
-                <Select v-model="selected" :options="[
-                    { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
-                    { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
-                ]" />
-            </div>
-        </div>
+        <!-- server selector will be rendered into DataTable's `left` slot -->
 
         <div v-if="selected === 'eldewrito'">
-            <DataTable :columns="columns" :data="servers" />
+            <DataTable :columns="columns" :data="servers" :players="currentPlayers" :servers="currentServers">
+                <template #left>
+                    <div class="min-w-[160px] h-10 -ml-1 flex items-center rounded-md border border-input bg-background px-2">
+                        <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
+                        <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
+                        <Select v-model="selected" class="ml-0 h-full bg-transparent border-0 p-0" :options="[
+                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                            { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                        ]" />
+                    </div>
+                </template>
+            </DataTable>
         </div>
         <div v-else>
-            <CartographerBrowser ref="cartoRef" />
+            <CartographerBrowser ref="cartoRef">
+                <template #left>
+                    <div class="min-w-[160px] h-10 -ml-1 flex items-center rounded-md border border-input bg-background px-2">
+                        <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
+                        <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
+                        <Select v-model="selected" class="ml-0 h-full bg-transparent border-0 p-0" :options="[
+                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                            { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                        ]" />
+                    </div>
+                </template>
+            </CartographerBrowser>
         </div>
     </div>
 </template>

@@ -287,7 +287,6 @@ onUnmounted(() =>
                         <h1 class="title is-2">ZekBrowser</h1>
                         <p class="subtitle is-spaced">
                             <span v-if="cartoCountsLoading">Loading…</span>
-                            <span v-else>{{ browserStatus }}</span>
                         </p>
                     </div>
                     <div class="header-right">
@@ -367,6 +366,9 @@ onUnmounted(() =>
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    /* ensure header actions sit above translated search-row so they're clickable */
+    position: relative;
+    z-index: 30;
 }
 
 .refresh-button 
@@ -380,6 +382,8 @@ onUnmounted(() =>
     align-items: center;
     justify-content: center;
     transition: all 0.15s ease;
+    height: 36px;
+    width: 36px;
 }
 
 .refresh-button:hover 
@@ -411,6 +415,11 @@ onUnmounted(() =>
 .animate-spin 
 {
     animation: spin 1s linear infinite;
+}
+
+:deep(.header-right .theme-toggle) {
+    height: 36px;
+    width: 36px;
 }
 
 @keyframes spin 

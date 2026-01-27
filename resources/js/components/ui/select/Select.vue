@@ -41,15 +41,13 @@ async function positionDropdown() {
 
   const rect = anchor.getBoundingClientRect()
   // position fixed relative to viewport so it escapes any overflow clipping
-  // align the dropdown's right edge with the anchor element's right edge
-  // subtract a small offset so the dropdown sits slightly to the right
-  // For overlay behavior: position dropdown to cover the anchor by using
-  // the anchor's top/left so the list overlays the button.
-  const OFFSET_PX = 0
-  const left = Math.max(0, Math.round(rect.left - OFFSET_PX))
+  // place the dropdown just below the anchor (using anchor.bottom) so it
+  // appears under the input instead of overlapping the top edge.
+  const OFFSET_PX = 4
+  const left = Math.max(0, Math.round(rect.left))
   dropdownStyle.value = {
     position: 'fixed',
-    top: `${rect.top}px`,
+    top: `${Math.round(rect.bottom + OFFSET_PX)}px`,
     left: `${left}px`,
     minWidth: `${rect.width}px`,
   }
@@ -92,7 +90,7 @@ watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
       @click="toggle"
     >
       <template v-if="!props.iconOnly">
-        <span class="truncate pr-8">{{ selectedLabel }}</span>
+        <span class="truncate pr-8 flex items-center h-full leading-none" style="transform: translateY(-1px);">{{ selectedLabel }}</span>
       </template>
       <span class="pointer-events-none" :class="props.iconOnly ? '' : 'absolute right-3 top-1/2 -translate-y-1/2'">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" :style="props.iconOnly ? 'width:1.5em;height:1.5em' : 'width:1.35em;height:1.35em'"><path d="M6 8l4 4 4-4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -103,7 +101,7 @@ watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
       <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-0 max-h-80 overflow-auto rounded-md border border-input bg-background text-foreground shadow-lg">
         <li v-for="opt in options" :key="opt.value" @click.stop="select(opt.value)" class="px-3 py-2 cursor-pointer hover:bg-muted/60 hover:text-foreground active:bg-transparent focus:outline-none flex items-center">
           <img v-if="opt.icon" :src="opt.icon" :alt="opt.label" :class="['w-5 h-5 mr-2 object-contain', opt.iconRounded ? 'rounded-full' : '']" />
-          <span class="truncate">{{ opt.label }}</span>
+          <span class="truncate ml-3" style="transform: translate(-1px, -4px);">{{ opt.label }}</span>
         </li>
       </ul>
     </teleport>
