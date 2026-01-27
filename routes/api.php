@@ -11,3 +11,4 @@ Route::get('/servicerecord', [ProxyController::class, 'serviceRecord']);
 // Cartographer proxy endpoints to avoid CORS issues from the browser
 Route::get('/cartographer/list', [CartographerProxyController::class, 'list']);
 Route::get('/cartographer/servers/{id}', [CartographerProxyController::class, 'server']);
+Route::get('/unicode/list', [App\Http\Controllers\Api\UnicodeController::class, 'list']);

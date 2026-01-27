@@ -100,14 +100,13 @@ def clean_string_field(s: Any) -> Any:
         return s
     s = s.strip()
     # remove wrapping quotes
-    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
-        s = s[1:-1]
-    # unescape
-    try:
-        s = bytes(s, 'utf-8').decode('unicode_escape')
-    except Exception:
-        pass
-    # strip control chars
+    # remove a single leading or trailing double-quote if present
+    if s.startswith('"'):
+        s = s[1:]
+    if s.endswith('"'):
+        s = s[:-1]
+    # preserve raw unicode exactly (do not unescape escape sequences)
+    # strip control chars but keep all other unicode
     s = ''.join(c for c in s if ord(c) >= 0x20 and ord(c) != 0x7f)
     return s.strip()
 

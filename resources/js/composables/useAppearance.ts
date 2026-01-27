@@ -1,4 +1,4 @@
-import { onMounted, ref } from 'vue';
+import { ref } from 'vue';
 
 type Appearance = 'light' | 'dark';
 
@@ -36,16 +36,14 @@ export function updateAppearance(value: Appearance)
     updateTheme(value);
 }
 
-export function useAppearance() 
-{
-    onMounted(() => 
-    {
-        if (typeof globalThis.window !== 'undefined' && (globalThis.window as any).__INITIAL_APPEARANCE__) 
-        {
-            appearance.value = (globalThis.window as any).__INITIAL_APPEARANCE__ as Appearance;
-        }
-    });
+// Initialize appearance once at module load (prevents remounts from resetting it)
+if (typeof globalThis.window !== 'undefined' && (globalThis.window as any).__INITIAL_APPEARANCE__) {
+    appearance.value = (globalThis.window as any).__INITIAL_APPEARANCE__ as Appearance;
+    // Ensure document reflects the initial appearance
+    updateTheme(appearance.value);
+}
 
+export function useAppearance() {
     return {
         appearance,
         updateAppearance,

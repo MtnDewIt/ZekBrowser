@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, h } from 'vue';
+import UnicodeText from '@/components/UnicodeText.vue';
 import DataTable from '@/components/server-browser/DataTable.vue';
 import { Button } from '@/components/ui/button';
 import type { ColumnDef } from '@tanstack/vue-table';
@@ -48,10 +49,10 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) =>
 
 const columns: ColumnDef<CartoServer>[] = [
   { accessorKey: 'xuid', header: makeSortHeader('XUID'), cell: ({ row }) => String(row.getValue('xuid') || '') },
-  { accessorKey: 'server_name', header: makeSortHeader('Server'), cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [ h('span', { class: 'font-bold!' }, row.getValue('server_name')) ]) },
-  { accessorKey: 'map_name', header: makeSortHeader('Map'), cell: ({ row }) => row.getValue('map_name') },
-  { accessorKey: 'gametype', header: makeSortHeader('Gametype'), cell: ({ row }) => row.getValue('gametype') },
-  { accessorKey: 'variant', header: makeSortHeader('Variant'), cell: ({ row }) => row.getValue('variant') },
+  { accessorKey: 'server_name', header: makeSortHeader('Server'), cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [ h('span', { class: 'font-bold!' }, h(UnicodeText, { text: row.getValue('server_name') })) ]) },
+  { accessorKey: 'map_name', header: makeSortHeader('Map'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('map_name') }) },
+  { accessorKey: 'gametype', header: makeSortHeader('Gametype'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('gametype') }) },
+  { accessorKey: 'variant', header: makeSortHeader('Variant'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('variant') }) },
   { id: 'players', accessorFn: (row) => {
       const p = row.players || (row as any).players;
       if (p && typeof p === 'object') return Number(p.filled ?? 0);
@@ -80,7 +81,7 @@ const columns: ColumnDef<CartoServer>[] = [
       return `${filled}/${max}`;
     }
   },
-  { accessorKey: 'description', header: makeSortHeader('Description'), cell: ({ row }) => row.getValue('description') || '—' },
+  { accessorKey: 'description', header: makeSortHeader('Description'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('description') || '—', stripUnicode: true }) },
 ];
 
 async function fetchDetails(id: number | string): Promise<CartoServer | null> {
