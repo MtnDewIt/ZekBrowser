@@ -333,8 +333,8 @@ onUnmounted(() =>
     justify-content: space-between;
     align-items: left;
 
-    /*TODO: Maybe add better handling for weird resolutions*/
-    width: min(100%, calc(100vh * 16 / 9));
+    /* Keep width stable when window height changes */
+    width: 100%;
 }
 
 .header-container 
