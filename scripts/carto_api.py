@@ -69,6 +69,7 @@ MAP_ID_TO_INFO = {
     1002:   ("gemini",             "Gemini"),
     800:    ("headlong",           "Headlong"),
     1402:   ("highplains",         "Tombstone"),
+    3000:   ("highplains",         "Tombstone"),
     50:     ("lockout",            "Lockout"),
     20:     ("midship",            "Midship"),
     444678: ("needle",             "Uplift"),
