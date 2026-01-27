@@ -48,7 +48,6 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) =>
 };
 
 const columns: ColumnDef<CartoServer>[] = [
-  { accessorKey: 'xuid', header: makeSortHeader('XUID'), cell: ({ row }) => String(row.getValue('xuid') || '') },
   { accessorKey: 'server_name', header: makeSortHeader('Server'), cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [ h('span', { class: 'font-bold!' }, h(UnicodeText, { text: row.getValue('server_name') })) ]) },
   { accessorKey: 'map_name', header: makeSortHeader('Map'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('map_name') }) },
   { accessorKey: 'gametype', header: makeSortHeader('Gametype'), cell: ({ row }) => h(UnicodeText, { text: row.getValue('gametype') }) },
