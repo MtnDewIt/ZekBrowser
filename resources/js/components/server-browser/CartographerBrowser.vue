@@ -230,25 +230,18 @@ defineExpose({ load });
 
 <template>
   <div class="carto-browser">
-    <div v-if="loading">Loading…</div>
-    <div v-else-if="error" class="text-red-500">{{ error }}</div>
-    <div v-else>
-      <DataTable :columns="columns" :data="servers" :searchOptions="[
-        { label: 'All', value: 'all' },
-        { label: 'Server', value: 'server' },
-        { label: 'Map', value: 'map' },
-        { label: 'Gametype', value: 'gametype' },
-        { label: 'Variant', value: 'variant' },
-        { label: 'Description', value: 'description' },
-      ]" :initialSorting="[{ id: 'players', desc: true }]"
-      :players="(servers || []).reduce((acc, s) => acc + (s?.players && typeof s.players === 'object' ? Number(s.players.filled ?? 0) : (typeof s.players === 'number' ? Number(s.players) : 0)), 0)"
-      :servers="(servers || []).length"
-      >
-        <template #left>
-          <slot name="left" />
-        </template>
-      </DataTable>
-    </div>
+    <div v-if="error" class="text-red-500">{{ error }}</div>
+
+    <DataTable :columns="columns" :data="servers" :searchOptions="[{ label: 'All', value: 'all' }, { label: 'Server', value: 'server' }, { label: 'Map', value: 'map' }, { label: 'Gametype', value: 'gametype' }, { label: 'Variant', value: 'variant' }, { label: 'Description', value: 'description' }]" :initialSorting="[{ id: 'players', desc: true }]"
+    :players="(servers || []).reduce((acc, s) => acc + (s?.players && typeof s.players === 'object' ? Number(s.players.filled ?? 0) : (typeof s.players === 'number' ? Number(s.players) : 0)), 0)"
+    :servers="(servers || []).length"
+    >
+      <template #left>
+        <slot name="left" />
+      </template>
+    </DataTable>
+
+    <!-- loading indicator intentionally removed so search and selector remain visible -->
   </div>
 </template>
 

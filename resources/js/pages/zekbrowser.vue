@@ -285,9 +285,7 @@ onUnmounted(() =>
                 <div class="header-container">
                     <div class="header-left">
                         <h1 class="title is-2">ZekBrowser</h1>
-                        <p class="subtitle is-spaced">
-                            <span v-if="cartoCountsLoading">Loading…</span>
-                        </p>
+                        <p class="subtitle is-spaced"></p>
                     </div>
                     <div class="header-right">
                         <button
