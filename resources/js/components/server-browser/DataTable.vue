@@ -160,13 +160,13 @@ const table = useVueTable({
             </div>
         </div>
 
-        <div class="ml-3 flex items-center gap-3 text-sm text-muted-foreground">
+        <div class="ml-3 flex items-center gap-3 text-sm text-muted-foreground min-w-[160px] justify-end">
             <div class="flex items-center gap-1">
-                <span class="font-semibold">{{ props.players ?? '—' }}</span>
+                <span class="font-semibold tabular-nums">{{ props.players ?? '—' }}</span>
                 <span class="opacity-80">Players</span>
             </div>
             <div class="flex items-center gap-1">
-                <span class="font-semibold">{{ props.servers ?? '—' }}</span>
+                <span class="font-semibold tabular-nums">{{ props.servers ?? '—' }}</span>
                 <span class="opacity-80">Servers</span>
             </div>
         </div>
