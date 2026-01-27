@@ -333,8 +333,11 @@ onUnmounted(() =>
     justify-content: space-between;
     align-items: left;
 
-    /*TODO: Maybe add better handling for weird resolutions*/
-    width: min(100%, calc(100vh * 16 / 9));
+     /* Prevent vertical resizing from shrinking page contents.
+         Use full width with a reasonable max-width instead of tying
+         the layout width to viewport height. Adjust `max-width` as needed. */
+     width: 100%;
+     max-width: 1200px;
 }
 
 .header-container 
