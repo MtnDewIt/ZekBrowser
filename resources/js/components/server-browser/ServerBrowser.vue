@@ -292,8 +292,8 @@ const columns: ColumnDef<ElDewritoServer>[] =
                         <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <Select v-model="selected" class="ml-0 h-full bg-transparent border-0 p-0" :options="[
-                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                         ]" />
                     </div>
                 </template>
@@ -306,8 +306,8 @@ const columns: ColumnDef<ElDewritoServer>[] =
                         <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" style="transform: translateX(3px);" />
                         <Select v-model="selected" class="ml-0 h-full bg-transparent border-0 p-0" :options="[
-                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                         ]" />
                     </div>
                 </template>
