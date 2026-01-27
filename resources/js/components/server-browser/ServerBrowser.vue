@@ -4,8 +4,10 @@ import type { ElDewritoServer } from '@/models/ElDewritoServer';
 import DataTable from '@/components/server-browser/DataTable.vue';
 import ModsCard from '@/components/server-browser/ModsCard.vue';
 import PlayersCard from '@/components/server-browser/PlayersCard.vue';
+import CartographerBrowser from '@/components/server-browser/CartographerBrowser.vue';
 import { Button } from '@/components/ui/button';
-import { h } from 'vue';
+import { Select } from '@/components/ui/select';
+import { h, ref, defineExpose, watch, onMounted } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 
 interface Props 
@@ -15,7 +17,111 @@ interface Props
 
 const SORT_ICON_BASE = 'icon-mask inline-block w-3.5 h-3.5 ml-2 align-middle opacity-70';
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const STORAGE_KEY = 'zekbrowser.serverBrowser';
+const selected = ref('eldewrito');
+onMounted(() => {
+    try {
+        const v = localStorage.getItem(STORAGE_KEY);
+        if (v === 'cartographer' || v === 'eldewrito') selected.value = v;
+    } catch (e) {
+        // ignore (e.g., unavailable in some environments)
+    }
+    // emit initial counts for the active browser
+    if (selected.value === 'cartographer') {
+        fetchCartoCounts();
+    } else {
+        try {
+            const srv = Array.isArray(props.servers) ? props.servers : [];
+            let players = 0;
+            for (const s of srv) players += Number(s.numPlayers || 0);
+            const servcount = srv.length;
+            currentPlayers.value = players;
+            currentServers.value = servcount;
+            emit('counts', { players, servers: servcount });
+        } catch (e) { }
+    }
+});
+watch(selected, (v) => {
+    try { localStorage.setItem(STORAGE_KEY, v); } catch (e) { }
+    if (v === 'cartographer') {
+        fetchCartoCounts();
+    } else {
+        // compute counts from parent-provided `props.servers`
+        try {
+            const srv = Array.isArray(props.servers) ? props.servers : [];
+            let players = 0;
+            for (const s of srv) players += Number(s.numPlayers || 0);
+            const servcount = srv.length;
+            currentPlayers.value = players;
+            currentServers.value = servcount;
+            emit('counts', { players, servers: servcount });
+        } catch (e) { /* ignore */ }
+    }
+});
+
+// update elderwrito counts when parent servers prop changes
+watch(() => props.servers, (val) => {
+    if (selected.value === 'eldewrito') {
+        try {
+            const srv = Array.isArray(val) ? val : [];
+            let players = 0;
+            for (const s of srv) players += Number(s.numPlayers || 0);
+            const servcount = srv.length;
+            currentPlayers.value = players;
+            currentServers.value = servcount;
+            emit('counts', { players, servers: servcount });
+        } catch (e) { }
+    }
+}, { deep: true });
+const cartoRef = ref(null as any);
+
+const currentPlayers = ref<number>(0);
+const currentServers = ref<number>(0);
+
+const emit = defineEmits<{
+    (e: 'counts', payload: { players: number; servers: number }): void,
+    (e: 'counts-loading', val: boolean): void,
+}>();
+
+async function fetchCartoCounts() {
+    emit('counts-loading', true);
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch('/api/cartographer/list');
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error('Network');
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.servers && Array.isArray(data.servers) ? data.servers : []);
+        let serversNum = list.length;
+        let playersNum = 0;
+        for (const s of list) {
+            const p = s.players;
+            if (p && typeof p === 'object') playersNum += Number(p.filled ?? 0);
+            else if (typeof p === 'number') playersNum += Number(p);
+        }
+        currentPlayers.value = playersNum;
+        currentServers.value = serversNum;
+        emit('counts', { players: playersNum, servers: serversNum });
+    } catch (e) {
+        // ignore
+    } finally {
+        emit('counts-loading', false);
+    }
+}
+
+async function refresh() {
+    if (selected.value === 'cartographer' && cartoRef.value && typeof cartoRef.value.load === 'function') {
+        await cartoRef.value.load();
+        await fetchCartoCounts();
+        return true;
+    }
+    return false;
+}
+
+defineExpose({ refresh, getSelection: () => selected.value });
 
 const renderSortIcon = (state: false | 'asc' | 'desc') => 
 {
@@ -176,5 +282,22 @@ const columns: ColumnDef<ElDewritoServer>[] =
 </script>
 
 <template>
-    <DataTable :columns="columns" :data="servers" />
+    <div>
+        <div class="mb-3 flex items-center gap-3">
+            <label class="font-medium flex items-center h-10">Browser</label>
+            <div class="min-w-[160px] h-10 relative top-[1px]">
+                <Select v-model="selected" :options="[
+                    { label: 'Eldewrito', value: 'eldewrito' },
+                    { label: 'Cartographer', value: 'cartographer' },
+                ]" />
+            </div>
+        </div>
+
+        <div v-if="selected === 'eldewrito'">
+            <DataTable :columns="columns" :data="servers" />
+        </div>
+        <div v-else>
+            <CartographerBrowser ref="cartoRef" />
+        </div>
+    </div>
 </template>

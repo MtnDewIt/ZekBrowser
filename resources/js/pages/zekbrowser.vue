@@ -69,7 +69,17 @@ function fetchZekBrowser()
         .then((response) => response.json())
         .then((data) => 
         {
-            updateCounts(data.count);
+            // Only update the header counts from Eldewrito data when the
+            // active server browser is not Cartographer. If the user is
+            // viewing Cartographer, that component will emit its own counts.
+            try {
+                const active = serverBrowser.value && typeof serverBrowser.value.getSelection === 'function'
+                    ? serverBrowser.value.getSelection()
+                    : null;
+                if (active !== 'cartographer') updateCounts(data.count);
+            } catch (e) {
+                updateCounts(data.count);
+            }
 
             const serverArray: object[] = [];
 
@@ -192,6 +202,19 @@ const REFRESH_INTERVAL = 15000; // 30 seconds
 let refreshTimer: number | null = null;
 
 const isRefreshing = ref(false);
+const serverBrowser = ref<any>(null);
+const cartoCountsLoading = ref(false);
+
+function handleChildCounts(payload: { players: number; servers: number }) {
+    playerCount.value = payload.players;
+    serverCount.value = payload.servers;
+    const rip = playerCount.value === 0 ? ' rip' : '';
+    browserStatus.value = `${playerCount.value} players on ${serverCount.value} servers.${rip}`;
+}
+
+function handleChildCountsLoading(val: boolean) {
+    cartoCountsLoading.value = val;
+}
 
 async function handleRefresh() 
 {
@@ -199,7 +222,21 @@ async function handleRefresh()
     const minDelay = new Promise(resolve => setTimeout(resolve, 600));
     try 
     {
-        await Promise.all([fetchZekBrowser(), minDelay]);
+        // Give the ServerBrowser a chance to handle the refresh (e.g., Cartographer view)
+        let handled = false;
+        if (serverBrowser.value && typeof serverBrowser.value.refresh === 'function') {
+            try {
+                handled = await serverBrowser.value.refresh();
+            } catch (e) {
+                console.warn('serverBrowser.refresh() failed:', e);
+            }
+        }
+
+        if (!handled) {
+            await Promise.all([fetchZekBrowser(), minDelay]);
+        } else {
+            await minDelay;
+        }
     } 
     catch (error) 
     {
@@ -248,7 +285,10 @@ onUnmounted(() =>
                 <div class="header-container">
                     <div class="header-left">
                         <h1 class="title is-2">ZekBrowser</h1>
-                        <p class="subtitle is-spaced">{{ browserStatus }}</p>
+                        <p class="subtitle is-spaced">
+                            <span v-if="cartoCountsLoading">Loading…</span>
+                            <span v-else>{{ browserStatus }}</span>
+                        </p>
                     </div>
                     <div class="header-right">
                         <button
@@ -267,7 +307,7 @@ onUnmounted(() =>
                     </div>
                 </div>
             
-                <ServerBrowser v-if="showBrowser" :servers="servers" />
+                <ServerBrowser ref="serverBrowser" v-if="showBrowser" :servers="servers" @counts="handleChildCounts" @counts-loading="handleChildCountsLoading" />
             
                 <div class="header-container-stats">
                     <h2 class="title is-3">Stats</h2>

@@ -99,7 +99,7 @@ watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
     </button>
 
     <teleport to="body">
-      <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-1 max-h-56 overflow-auto rounded-md border border-input bg-background text-foreground shadow-lg">
+      <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-1 max-h-80 overflow-auto rounded-md border border-input bg-background text-foreground shadow-lg">
         <li v-for="opt in options" :key="opt.value" @click.stop="select(opt.value)" class="px-3 py-2 cursor-pointer hover:bg-muted/60 hover:text-foreground active:bg-transparent focus:outline-none">
           {{ opt.label }}
         </li>
