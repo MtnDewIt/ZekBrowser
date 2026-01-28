@@ -6,6 +6,7 @@ const props = defineProps<{
   options: { label: string; value: string; icon?: string; iconRounded?: boolean }[]
   class?: string
   iconOnly?: boolean
+  fullWidthTrigger?: boolean
 }>()
 
 const emits = defineEmits<{
@@ -85,12 +86,16 @@ watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
       :class="[
         props.iconOnly
           ? 'h-8 w-8 p-0 rounded-md bg-transparent border-0 flex items-center justify-center focus:outline-none focus:ring-0'
-          : 'h-10 min-w-[8rem] px-3 rounded-md border border-input bg-background text-foreground text-sm relative flex items-center focus:outline-none focus:ring-0'
+          : 'h-10 min-w-[8rem] px-3 rounded-md border border-input bg-background text-foreground text-sm relative flex items-center focus:outline-none focus:ring-0',
+        props.fullWidthTrigger ? 'w-full justify-between' : ''
       ]"
       @click="toggle"
     >
       <template v-if="!props.iconOnly">
-        <span class="truncate pr-8 flex items-center h-full leading-none" style="transform: translateY(-1px);">{{ selectedLabel }}</span>
+        <span class="truncate pr-8 flex items-center h-full leading-none" style="transform: translateY(-1px);">
+          <slot name="trigger-content" />
+          {{ selectedLabel }}
+        </span>
       </template>
       <span class="pointer-events-none" :class="props.iconOnly ? '' : 'absolute right-3 top-1/2 -translate-y-1/2'">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" :style="props.iconOnly ? 'width:1.5em;height:1.5em' : 'width:1.35em;height:1.35em'"><path d="M6 8l4 4 4-4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
