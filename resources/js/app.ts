@@ -7,7 +7,7 @@ import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 
 createInertiaApp({
-    title: (title) => (`${title} - ElDewrito Server Browser`),
+    title: (title) => (`${title} - Halo Server Browser`),
     resolve: (name) => resolvePageComponent(`./pages/${name}.vue`, import.meta.glob<DefineComponent>('./pages/**/*.vue')),
     setup({ el, App, props, plugin }) 
     {

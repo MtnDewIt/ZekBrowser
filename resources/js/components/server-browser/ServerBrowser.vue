@@ -290,11 +290,11 @@ const columns: ColumnDef<ElDewritoServer>[] =
                 <template #left>
                     <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background">
                         <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
-                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                            { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
                         ]" :full-width-trigger="true">
                             <template #trigger-content>
-                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
                                 <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
                             </template>
                         </Select>
@@ -307,11 +307,11 @@ const columns: ColumnDef<ElDewritoServer>[] =
                 <template #left>
                     <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background">
                         <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
-                            { label: 'Eldewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                            { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
                         ]" :full-width-trigger="true">
                             <template #trigger-content>
-                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="Eldewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
                                 <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
                             </template>
                         </Select>

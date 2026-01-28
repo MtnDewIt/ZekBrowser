@@ -275,7 +275,7 @@ onUnmounted(() =>
     <Head title="ZekBrowser">
         <meta
             name="description"
-            content="Find and join ElDewrito servers with the server browser. Play unique maps, game modes, and mods from the community."
+            content="Find and join halo servers with the server browser. Play unique maps, game modes, and mods from the community."
         />
     </Head>
 
