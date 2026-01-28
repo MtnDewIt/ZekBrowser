@@ -22,6 +22,7 @@ const servers = ref<ElDewritoServer[]>([]);
 
 const showBrowser = ref(false);
 const browserStatus = ref('Loading...');
+const activeBrowser = ref<'eldewrito' | 'cartographer'>('eldewrito');
 
 const statsStatus = ref('Loading...');
 const chartOptions = ref({
@@ -63,21 +64,26 @@ const chartOptions = ref({
     },
 });
 
-function fetchZekBrowser() 
+async function fetchZekBrowser() 
 {
     return fetch(props.zekBrowserApi)
         .then((response) => response.json())
         .then((data) => 
         {
-            // Only update the header counts from Eldewrito data when the
+            // Only update the header counts from ElDewrito data when the
             // active server browser is not Cartographer. If the user is
             // viewing Cartographer, that component will emit its own counts.
-            try {
-                const active = serverBrowser.value && typeof serverBrowser.value.getSelection === 'function'
-                    ? serverBrowser.value.getSelection()
-                    : null;
-                if (active !== 'cartographer') updateCounts(data.count);
-            } catch (e) {
+            try 
+            {
+                const active = serverBrowser.value && typeof serverBrowser.value.getSelection === 'function' ? serverBrowser.value.getSelection() : null;
+
+                if (active !== 'cartographer') 
+                {
+                    updateCounts(data.count);
+                }
+            } 
+            catch (e) 
+            {
                 updateCounts(data.count);
             }
 
@@ -163,7 +169,19 @@ function updateCounts(count)
 
 function fetchStats() 
 {
-    fetch(`${props.zekBrowserApi}stats`)
+    var statsURL = '';
+
+    if (activeBrowser.value === 'eldewrito') 
+    {
+        statsURL = `${props.zekBrowserApi}stats`;
+    } 
+
+    if (activeBrowser.value === 'cartographer') 
+    {
+        statsURL = `${props.zekBrowserApi}cartographer/stats`;
+    }
+
+    fetch(statsURL)
         .then((response) => response.json())
         .then((data) => 
         {
@@ -214,6 +232,11 @@ function handleChildCounts(payload: { players: number; servers: number }) {
 
 function handleChildCountsLoading(val: boolean) {
     cartoCountsLoading.value = val;
+}
+
+function handleBrowserChange(browserType: 'eldewrito' | 'cartographer') {
+    activeBrowser.value = browserType;
+    fetchStats();
 }
 
 async function handleRefresh() 
@@ -304,7 +327,7 @@ onUnmounted(() =>
                     </div>
                 </div>
             
-                <ServerBrowser ref="serverBrowser" v-if="showBrowser" :servers="servers" @counts="handleChildCounts" @counts-loading="handleChildCountsLoading" />
+                <ServerBrowser ref="serverBrowser" v-if="showBrowser" :servers="servers" @counts="handleChildCounts" @counts-loading="handleChildCountsLoading" @browser-change="handleBrowserChange" />
             
                 <div class="header-container-stats">
                     <h2 class="title is-3">Stats</h2>

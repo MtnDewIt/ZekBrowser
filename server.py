@@ -21,7 +21,11 @@ REFRESH_INTERVAL = 15  # seconds
 STATS_INTERVAL = 300   # seconds
 API_TIMEOUT = 5.0      # seconds
 DB_PATH = "database/database.sqlite"
-LEGACY_STATS_URL = "https://eldewrito.pauwlo.com/api/stats"
+LEGACY_ELDEWRITO_STATS_URL = "https://eldewrito.pauwlo.com/api/stats"
+
+# Cartographer configuration
+CARTOGRAPHER_BASE = "https://cartographer.online"
+CARTOGRAPHER_LIST_URL = f"{CARTOGRAPHER_BASE}/live/server_list.php"
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,33 +35,34 @@ logger = logging.getLogger(__name__)
 # We use a global dictionary to store the cached API response.
 # Since asyncio runs on a single thread, swapping the reference to this dict is atomic.
 api_cache: Dict[str, Any] = {}
+cartographer_cache: Dict[str, Any] = {}
 
 app = FastAPI()
 
 # --- Database Functions ---
 
 async def fetch_legacy_stats() -> Optional[Dict[str, List[List[int]]]]:
-    """Fetch historical stats from legacy API."""
+    """Fetch historical ElDewrito stats from legacy API."""
     try:
         async with httpx.AsyncClient() as client:
-            logger.info(f"Fetching legacy stats from {LEGACY_STATS_URL}...")
-            response = await client.get(LEGACY_STATS_URL, timeout=30.0)
+            logger.info(f"Fetching legacy ElDewrito stats from {LEGACY_ELDEWRITO_STATS_URL}...")
+            response = await client.get(LEGACY_ELDEWRITO_STATS_URL, timeout=30.0)
             response.raise_for_status()
             data = response.json()
 
             if "players" in data and "servers" in data:
                 if isinstance(data["players"], list) and isinstance(data["servers"], list):
-                    logger.info(f"Successfully fetched {len(data['players'])} historical data points")
+                    logger.info(f"Successfully fetched {len(data['players'])} historical ElDewrito data points")
                     return data
             
             logger.warning("Legacy stats API returned unexpected format")
             return None
     except Exception as e:
-        logger.warning(f"Failed to fetch legacy stats: {e}")
+        logger.warning(f"Failed to fetch legacy ElDewrito stats: {e}")
         return None
 
 def populate_stats_from_legacy(legacy_data: Dict[str, List[List[int]]]):
-    """Populate database with legacy stats data."""
+    """Populate ElDewrito database with legacy stats data."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -84,15 +89,16 @@ def populate_stats_from_legacy(legacy_data: Dict[str, List[List[int]]]):
         conn.commit()
         conn.close()
         
-        logger.info(f"Successfully populated database with {records_added} historical records")
+        logger.info(f"Successfully populated ElDewrito database with {records_added} historical records")
     except Exception as e:
-        logger.error(f"Failed to populate stats from legacy data: {e}")
+        logger.error(f"Failed to populate ElDewrito stats from legacy data: {e}")
 
 async def init_db():
-    """Initialize the stats table and populate with legacy data if empty."""
+    """Initialize the stats tables and populate ElDewrito stats with legacy data if empty."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
+    # ElDewrito stats table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS server_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,25 +115,47 @@ async def init_db():
         ON server_stats(recorded_at)
     """)
     
+    # Cartographer stats table (no legacy data population)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cartographer_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_count INTEGER NOT NULL DEFAULT 0,
+            server_count INTEGER NOT NULL DEFAULT 0,
+            recorded_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_cartographer_recorded_at 
+        ON cartographer_stats(recorded_at)
+    """)
+    
+    # Only check ElDewrito stats for legacy data population
     cursor.execute("SELECT COUNT(*) FROM server_stats")
-    count = cursor.fetchone()[0]
+    eldewrito_count = cursor.fetchone()[0]
     
     conn.commit()
     conn.close()
     
     logger.info("Database initialized")
 
-    if count == 0:
-        logger.info("Stats table is empty, attempting to fetch legacy data...")
+    # Only populate legacy data for ElDewrito stats table
+    if eldewrito_count == 0:
+        logger.info("ElDewrito stats table is empty, attempting to fetch legacy data...")
         legacy_data = await fetch_legacy_stats()
         
         if legacy_data and (legacy_data.get("players") or legacy_data.get("servers")):
             populate_stats_from_legacy(legacy_data)
         else:
-            logger.info("No legacy data available, starting with empty stats database")
+            logger.info("No legacy data available, starting with empty ElDewrito stats database")
+    
+    # Cartographer stats starts fresh - no legacy data needed
+    logger.info("Cartographer stats will be collected from this point forward")
 
-def save_stats(player_count: int, server_count: int):
-    """Save current stats to database."""
+def save_eldewrito_stats(player_count: int, server_count: int):
+    """Save current ElDewrito stats to database."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -142,12 +170,32 @@ def save_stats(player_count: int, server_count: int):
         conn.commit()
         conn.close()
         
-        logger.info(f"Saved stats: {server_count} servers, {player_count} players")
+        logger.info(f"Saved ElDewrito stats: {server_count} servers, {player_count} players")
     except Exception as e:
-        logger.error(f"Failed to save stats: {e}")
+        logger.error(f"Failed to save ElDewrito stats: {e}")
+
+def save_cartographer_stats(player_count: int, server_count: int):
+    """Save current Cartographer stats to database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        now = datetime.now(timezone.utc)
+        
+        cursor.execute("""
+            INSERT INTO cartographer_stats (player_count, server_count, recorded_at)
+            VALUES (?, ?, ?)
+        """, (player_count, server_count, now))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Saved Cartographer stats: {server_count} servers, {player_count} players")
+    except Exception as e:
+        logger.error(f"Failed to save Cartographer stats: {e}")
 
 def get_stats_history() -> Dict[str, List[List[int]]]:
-    """Retrieve historical stats from database."""
+    """Retrieve historical ElDewrito stats from database."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -177,6 +225,83 @@ def get_stats_history() -> Dict[str, List[List[int]]]:
             "players": [],
             "servers": []
         }
+
+def get_cartographer_stats_history() -> Dict[str, List[List[int]]]:
+    """Retrieve historical Cartographer stats from database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                CAST(strftime('%s', recorded_at) AS INTEGER) * 1000 as timestamp,
+                player_count,
+                server_count
+            FROM cartographer_stats
+            ORDER BY recorded_at ASC
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        players = [[row[0], row[1]] for row in rows]
+        servers = [[row[0], row[2]] for row in rows]
+        
+        return {
+            "players": players,
+            "servers": servers
+        }
+    except Exception as e:
+        logger.error(f"Failed to retrieve Cartographer stats: {e}")
+        return {
+            "players": [],
+            "servers": []
+        }
+
+async def update_cartographer_cache():
+    """Fetch Cartographer server list and update cache."""
+    global cartographer_cache
+    
+    try:
+        async with httpx.AsyncClient(verify=False) as client:
+            logger.info("Fetching Cartographer server list...")
+            response = await client.get(CARTOGRAPHER_LIST_URL, timeout=15.0)
+            response.raise_for_status()
+            data = response.json()
+
+            if isinstance(data, list):
+                servers = data
+            elif isinstance(data, dict):
+                servers = data.get('servers', data.get('list', data.get('data', [])))
+            else:
+                servers = []
+
+            total_players = 0
+            total_servers = len(servers)
+            
+            for server in servers:
+                if isinstance(server, dict):
+                    players = server.get('players', {})
+                    if isinstance(players, dict):
+                        filled = players.get('filled', 0)
+                        try:
+                            total_players += int(filled)
+                        except (ValueError, TypeError):
+                            pass
+            
+            cartographer_cache = {
+                "count": {
+                    "players": total_players,
+                    "servers": total_servers
+                },
+                "updatedAt": get_current_http_date(),
+                "servers": servers
+            }
+            
+            logger.info(f"Cartographer cache updated. Servers: {total_servers}, Players: {total_players}")
+            
+    except Exception as e:
+        logger.error(f"Failed to update Cartographer cache: {e}")
 
 # --- Helper Functions ---
 
@@ -342,15 +467,35 @@ async def background_refresher():
         sleep_time = max(0, REFRESH_INTERVAL - elapsed)
         await asyncio.sleep(sleep_time)
 
+async def background_cartographer_refresher():
+    """Runs the Cartographer update logic every X seconds."""
+    while True:
+        start_time = datetime.now()
+        await update_cartographer_cache()
+        elapsed = (datetime.now() - start_time).total_seconds()
+        
+        sleep_time = max(0, REFRESH_INTERVAL - elapsed)
+        await asyncio.sleep(sleep_time)
+
 async def background_stats_recorder():
-    """Records stats to database every 5 minutes."""
+    """Records ElDewrito stats to database every 5 minutes."""
     while True:
         await asyncio.sleep(STATS_INTERVAL)
         
         if api_cache and "count" in api_cache:
             player_count = api_cache["count"].get("players", 0)
             server_count = api_cache["count"].get("servers", 0)
-            save_stats(player_count, server_count)
+            save_eldewrito_stats(player_count, server_count)
+
+async def background_cartographer_stats_recorder():
+    """Records Cartographer stats to database every 5 minutes."""
+    while True:
+        await asyncio.sleep(STATS_INTERVAL)
+        
+        if cartographer_cache and "count" in cartographer_cache:
+            player_count = cartographer_cache["count"].get("players", 0)
+            server_count = cartographer_cache["count"].get("servers", 0)
+            save_cartographer_stats(player_count, server_count)
 
 # --- FastAPI Events & Routes ---
 
@@ -360,7 +505,9 @@ async def startup_event():
 
     # TODO: This could probably be handled a lot better (these async tasks have no kill condition)
     asyncio.create_task(background_refresher())
+    asyncio.create_task(background_cartographer_refresher())
     asyncio.create_task(background_stats_recorder())
+    asyncio.create_task(background_cartographer_stats_recorder())
 
 @app.get("/api/")
 async def get_current_stats():
@@ -378,6 +525,11 @@ async def get_historical_stats():
     stats = get_stats_history()
     return stats
 
+@app.get("/api/cartographer/stats")
+async def get_cartographer_historical_stats():
+    """Serve historical Cartographer stats data for charting."""
+    stats = get_cartographer_stats_history()
+    return stats
 
 @app.get("/api/servicerecord")
 async def get_service_record(uid: Optional[str] = None):

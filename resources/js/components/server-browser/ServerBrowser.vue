@@ -45,6 +45,7 @@ onMounted(() => {
 });
 watch(selected, (v) => {
     try { localStorage.setItem(STORAGE_KEY, v); } catch (e) { }
+    emit('browser-change', v);
     if (v === 'cartographer') {
         fetchCartoCounts();
     } else {
@@ -83,6 +84,7 @@ const currentServers = ref<number>(0);
 const emit = defineEmits<{
     (e: 'counts', payload: { players: number; servers: number }): void,
     (e: 'counts-loading', val: boolean): void,
+    (e: 'browser-change', browserType: 'eldewrito' | 'cartographer'): void,
 }>();
 
 async function fetchCartoCounts() {
