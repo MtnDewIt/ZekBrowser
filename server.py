@@ -15,29 +15,220 @@ import re
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-# --- Configuration ---
-DEWRITO_JSON_PATH = "dewrito.json"
+# In production, you would run this via command line: uvicorn server:app --host 0.0.0.0 --port 80# --- Configuration ---
 REFRESH_INTERVAL = 15  # seconds
 STATS_INTERVAL = 300   # seconds
 API_TIMEOUT = 5.0      # seconds
 DB_PATH = "database/database.sqlite"
+
+# --- ElDewrito configuration ---
+ELDEWRITO_MASTER_LIST = "dewrito.json"
 LEGACY_ELDEWRITO_STATS_URL = "https://eldewrito.pauwlo.com/api/stats"
 
-# Cartographer configuration
+# --- Cartographer configuration ---
 CARTOGRAPHER_BASE = "https://cartographer.online"
 CARTOGRAPHER_LIST_URL = f"{CARTOGRAPHER_BASE}/live/server_list.php"
+CARTOGRAPHER_SERVER_URL = f"{CARTOGRAPHER_BASE}/live/servers"
+CARTOGRAPHER_WORKERS = 16
+
+# --- Cartographer Property Maps ---
+PROPERTY_MAP = {
+    1073775152: "server_name",
+    536904239:  "xuid",
+    536904219:  "unknown_int64_1",
+    1073775141: "server_desc",
+    268468743:  "map_id",
+    1073775142: "map_name",
+    1073775143: "map_hash_1",
+    1073775144: "gametype_name",
+    268468744:  "unknown_int32_1",
+    268468745:  "gametype_id",
+    268468746:  "map_id_2",
+    1073775145: "map_name_2",
+    1073775146: "map_hash_2",
+    1073775147: "gametype_name_2",
+    268468747:  "unknown_int32_2",
+    268468748:  "unknown_int32_3",
+    268468749:  "unknown_int32_4",
+    268468750:  "version_1",
+    268468751:  "version_2",
+    268468752:  "party_privacy",
+    268468753:  "game_status",
+    268468754:  "unknown_int32_6",
+    268468755:  "unknown_int32_7",
+}
+
+# --- Cartographer Map Info Table ---
+MAP_ID_TO_INFO = {
+    1:      ("00a_introduction",   "The Heretic"),
+    101:    ("01a_tutorial",       "Armory"),
+    105:    ("01b_spacestation",   "Cairo Station"),
+    301:    ("03a_oldmombasa",     "Outskirts"),
+    305:    ("03b_newmombasa",     "Metropolis"),
+    401:    ("04a_gasgiant",       "The Arbiter"),
+    405:    ("04b_floodlab",       "Oracle"),
+    501:    ("05a_deltaapproach",  "Delta Halo"),
+    505:    ("05b_deltatowers",    "Regret"),
+    601:    ("06a_sentinelwalls",  "Sacred Icon"),
+    605:    ("06b_floodzone",      "Quarantine Zone"),
+    701:    ("07a_highcharity",    "Gravemind"),
+    801:    ("07b_forerunnership", "High Charity"),
+    705:    ("08a_deltacliffs",    "Uprising"),
+    805:    ("08b_deltacontrol",   "The Great Journey"),
+    80:     ("ascension",          "Ascension"),
+    1201:   ("backwash",           "Backwash"),
+    100:    ("beavercreek",        "Beaver Creek"),
+    60:     ("burial_mounds",      "Burial Mounds"),
+    110:    ("coagulation",        "Coagulation"),
+    70:     ("colossus",           "Colossus"),
+    1300:   ("containment",        "Containment"),
+    10:     ("cyclotron",          "Ivory Tower"),
+    1302:   ("deltatap",           "Sanctuary"),
+    1400:   ("derelict",           "Desolation"),
+    3001:   ("derelict",           "Desolation"),
+    1200:   ("dune",               "Relic"),
+    1001:   ("elongation",         "Elongation"),
+    120:    ("foundation",         "Foundation"),
+    1002:   ("gemini",             "Gemini"),
+    800:    ("headlong",           "Headlong"),
+    1402:   ("highplains",         "Tombstone"),
+    3000:   ("highplains",         "Tombstone"),
+    50:     ("lockout",            "Lockout"),
+    20:     ("midship",            "Midship"),
+    444678: ("needle",             "Uplift"),
+    91101:  ("street_sweeper",     "District"),
+    1101:   ("triplicate",         "Terminal"),
+    1000:   ("turf",               "Turf"),
+    1109:   ("warlock",            "Warlock"),
+    40:     ("waterworks",         "Waterworks"),
+    30:     ("zanzibar",           "Zanzibar"),
+}
+
+# --- Cartographer Gametype Table ---
+GAMETYPE_ID_TO_NAME = {
+    0: "None",
+    1: "CTF",
+    2: "Slayer",
+    3: "Oddball",
+    4: "KOTH",
+    5: "Race",
+    6: "Headhunter",
+    7: "Juggernaut",
+    8: "Territories",
+    9: "Assault",
+    10: "Stub",
+}
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Global State (Cache) ---
-# We use a global dictionary to store the cached API response.
-# Since asyncio runs on a single thread, swapping the reference to this dict is atomic.
 api_cache: Dict[str, Any] = {}
 cartographer_cache: Dict[str, Any] = {}
+cartographer_summarized_cache: Dict[str, Any] = {}
 
 app = FastAPI()
+
+# --- Cartographer Helper Functions ---
+
+def clean_string_field(s: Any) -> Any:
+    """Clean and normalize string fields from Cartographer API."""
+    if not isinstance(s, str):
+        return s
+    s = s.strip()
+    # Remove wrapping quotes
+    if s.startswith('"'):
+        s = s[1:]
+    if s.endswith('"'):
+        s = s[:-1]
+    # Strip control chars but keep all other unicode
+    s = ''.join(c for c in s if ord(c) >= 0x20 and ord(c) != 0x7f)
+    return s.strip()
+
+
+def decode_pproperties(pp: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Decode pProperties array into named fields."""
+    out = {}
+    raw_props = []
+    pm = PROPERTY_MAP
+    for prop in pp:
+        pid = prop.get('dwPropertyId')
+        ptype = prop.get('type')
+        val = prop.get('value')
+        if isinstance(val, str):
+            val = clean_string_field(val)
+        name = pm.get(pid)
+        out_key = name if name else f"prop_{hex(pid) if isinstance(pid,int) else pid}"
+        out[out_key] = { 'value': val, 'type': ptype }
+        raw_props.append({ 'dwPropertyId': pid, 'type': ptype, 'value': val })
+    out['_raw'] = raw_props
+    return out
+
+
+def summarize_server(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Summarize Cartographer server data into a clean format."""
+    if data is None:
+        return {}
+    summary = {}
+    summary['xuid'] = data.get('xuid') or data.get('XUID') or None
+    summary['players'] = { 'filled': data.get('dwFilledPublicSlots'), 'max': data.get('dwMaxPublicSlots') }
+    pp = data.get('pProperties') or []
+    decoded = decode_pproperties(pp)
+
+    server_name = decoded.get('server_name', {}).get('value') or decoded.get('prop_0x40008230', {}).get('value') or ''
+    server_name = server_name.strip()
+
+    map_name = decoded.get('map_name', {}).get('value') or decoded.get('map_name_2', {}).get('value') or ''
+    map_id = decoded.get('map_id', {}).get('value') or decoded.get('map_id_2', {}).get('value')
+
+    gt1 = decoded.get('gametype_name', {}).get('value') or ''
+    gt2 = decoded.get('gametype_name_2', {}).get('value') or ''
+
+    gtid_raw = decoded.get('gametype_id', {}).get('value')
+    gametype_display = ''
+    if gtid_raw is not None:
+        try:
+            gtid_int = int(gtid_raw)
+            gametype_display = GAMETYPE_ID_TO_NAME.get(gtid_int, str(gtid_int))
+        except Exception:
+            gametype_display = str(gtid_raw)
+
+    variant_display = gt1 or gt2 or ''
+
+    if not map_name and map_id is not None:
+        try:
+            mid = int(map_id)
+            info = MAP_ID_TO_INFO.get(mid)
+            if info and len(info) > 1:
+                map_name = info[1]
+            else:
+                map_name = f"<map id {mid}>"
+        except Exception:
+            map_name = f"<map id {map_id}>"
+
+    description = (decoded.get('server_desc', {}).get('value') or '').strip()
+
+    summary['server_name'] = server_name
+    summary['map_name'] = map_name
+    summary['map_id'] = map_id
+    summary['gametype'] = gametype_display
+    summary['variant'] = variant_display
+    summary['description'] = description
+    summary['decoded_properties'] = decoded
+    return summary
+
+
+async def fetch_cartographer_server_details(client: httpx.AsyncClient, server_id: Any) -> Optional[Dict[str, Any]]:
+    """Fetch details for a single Cartographer server."""
+    url = f"{CARTOGRAPHER_SERVER_URL}/{server_id}"
+    try:
+        r = await client.get(url, timeout=15.0)
+        r.raise_for_status()
+        return summarize_server(r.json())
+    except Exception as e:
+        logger.warning(f"Failed to fetch Cartographer server {server_id}: {e}")
+        return {'xuid': server_id, 'server_name': '', 'map_name': '', 'gametype': '', 'variant': '', 'description': '<failed>'}
 
 # --- Database Functions ---
 
@@ -115,7 +306,7 @@ async def init_db():
         ON server_stats(recorded_at)
     """)
     
-    # Cartographer stats table (no legacy data population)
+    # Cartographer stats table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cartographer_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -259,8 +450,8 @@ def get_cartographer_stats_history() -> Dict[str, List[List[int]]]:
         }
 
 async def update_cartographer_cache():
-    """Fetch Cartographer server list and update cache."""
-    global cartographer_cache
+    """Fetch Cartographer server list and update cache with summarized data."""
+    global cartographer_cache, cartographer_summarized_cache
     
     try:
         async with httpx.AsyncClient(verify=False) as client:
@@ -270,16 +461,42 @@ async def update_cartographer_cache():
             data = response.json()
 
             if isinstance(data, list):
-                servers = data
+                raw_list = data
             elif isinstance(data, dict):
-                servers = data.get('servers', data.get('list', data.get('data', [])))
+                raw_list = data.get('servers', data.get('list', data.get('data', [])))
             else:
-                servers = []
+                raw_list = []
 
+            # Try to map servers directly first
+            mapped = []
+            ids = []
+            for item in raw_list:
+                if isinstance(item, dict) and (item.get('pProperties') or item.get('server_desc') or item.get('name')):
+                    mapped.append(summarize_server(item))
+                else:
+                    ids.append(item)
+
+            # If we have already summarized data, use it
+            if mapped:
+                logger.info(f"Using pre-summarized Cartographer data ({len(mapped)} servers)")
+                summarized_servers = mapped
+            else:
+                # Otherwise fetch each server detail concurrently
+                logger.info(f"Fetching details for {len(ids)} Cartographer servers...")
+                sem = asyncio.Semaphore(CARTOGRAPHER_WORKERS)
+                
+                async def sem_fetch(sid):
+                    async with sem:
+                        return await fetch_cartographer_server_details(client, sid)
+
+                tasks = [sem_fetch(sid) for sid in ids]
+                summarized_servers = await asyncio.gather(*tasks)
+
+            # Calculate totals
             total_players = 0
-            total_servers = len(servers)
+            total_servers = len(summarized_servers)
             
-            for server in servers:
+            for server in summarized_servers:
                 if isinstance(server, dict):
                     players = server.get('players', {})
                     if isinstance(players, dict):
@@ -289,13 +506,23 @@ async def update_cartographer_cache():
                         except (ValueError, TypeError):
                             pass
             
+            # Update both caches
             cartographer_cache = {
                 "count": {
                     "players": total_players,
                     "servers": total_servers
                 },
                 "updatedAt": get_current_http_date(),
-                "servers": servers
+                "servers": raw_list  # Keep raw list for compatibility
+            }
+
+            cartographer_summarized_cache = {
+                "count": {
+                    "players": total_players,
+                    "servers": total_servers
+                },
+                "updatedAt": get_current_http_date(),
+                "servers": summarized_servers  # Processed/summarized list
             }
             
             logger.info(f"Cartographer cache updated. Servers: {total_servers}, Players: {total_players}")
@@ -395,14 +622,14 @@ async def update_server_cache():
     
     # 1. Load Master Server URLs from local JSON
     try:
-        async with await anyio.open_file(DEWRITO_JSON_PATH, 'r') as f:
+        async with await anyio.open_file(ELDEWRITO_MASTER_LIST, 'r') as f:
             data = await f.read()
             config = json.loads(data)
             master_entries = config.get("masterServers", [])
             # Extract only the 'list' attribute
             master_urls = [m['list'] for m in master_entries if 'list' in m]
     except Exception as e:
-        logger.error(f"Error reading {DEWRITO_JSON_PATH}: {e}")
+        logger.error(f"Error reading {ELDEWRITO_MASTER_LIST}: {e}")
         return
 
     async with httpx.AsyncClient() as client:
@@ -525,11 +752,40 @@ async def get_historical_stats():
     stats = get_stats_history()
     return stats
 
+@app.get("/api/cartographer")
+async def get_cartographer_servers():
+    """Serve the current Cartographer server list (summarized)."""
+    if not cartographer_summarized_cache:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Cartographer data is warming up, please try again in a few seconds."}
+        )
+    return cartographer_summarized_cache
+
 @app.get("/api/cartographer/stats")
 async def get_cartographer_historical_stats():
     """Serve historical Cartographer stats data for charting."""
     stats = get_cartographer_stats_history()
     return stats
+
+@app.get("/api/cartographer/server/{server_id}")
+async def get_cartographer_server_detail(server_id: str):
+    """Fetch and return details for a specific Cartographer server."""
+    try:
+        async with httpx.AsyncClient(verify=False) as client:
+            server_data = await fetch_cartographer_server_details(client, server_id)
+            if server_data:
+                return server_data
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Server not found"}
+            )
+    except Exception as e:
+        logger.error(f"Failed to fetch Cartographer server {server_id}: {e}")
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Failed to fetch server details", "message": str(e)}
+        )
 
 @app.get("/api/servicerecord")
 async def get_service_record(uid: Optional[str] = None):
