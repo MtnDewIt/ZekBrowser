@@ -15,7 +15,6 @@ import re
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-# In production, you would run this via command line: uvicorn server:app --host 0.0.0.0 --port 80# --- Configuration ---
 REFRESH_INTERVAL = 15  # seconds
 STATS_INTERVAL = 300   # seconds
 API_TIMEOUT = 5.0      # seconds
