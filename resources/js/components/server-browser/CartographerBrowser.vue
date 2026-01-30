@@ -179,7 +179,9 @@ const columns: ColumnDef<CartoServer>[] =
 async function load() {
   loading.value = true;
   error.value = null;
-  servers.value = [];
+  // Don't clear `servers` immediately — keep the existing list visible
+  // while we fetch new data to avoid a jarring disappearance.
+  const newServers: CartoServer[] = [];
   
   try 
   {
@@ -206,8 +208,9 @@ async function load() {
       serverList = data;
     }
     
-    // Map the servers to our interface
-    servers.value = serverList.map((item: any) => ({
+    // Map the servers to our interface and only replace the visible
+    // `servers` after successful fetch so the UI remains stable.
+    newServers.push(...serverList.map((item: any) => ({
       xuid: item.xuid,
       server_name: item.server_name || '',
       map_id: item.map_id,
@@ -217,8 +220,10 @@ async function load() {
       players: item.players || { filled: undefined, max: undefined },
       description: item.description || '',
       decoded_properties: item.decoded_properties,
-    } as CartoServer));
+    } as CartoServer)));
     
+    // Swap in the new server list once ready.
+    servers.value = newServers;
     console.debug('Cartographer: loaded', servers.value.length, 'servers');
     
   } 

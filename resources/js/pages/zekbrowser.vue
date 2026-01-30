@@ -276,10 +276,16 @@ onMounted(async () =>
     fetchZekBrowser();
     fetchStats();
     
-    // Set up auto-refresh every 30 seconds
+    // Set up auto-refresh every interval; delegate to the shared handler
     refreshTimer = globalThis.setInterval(() => 
     {
-        fetchZekBrowser();
+        // Use the same refresh flow as manual refresh so Cartographer
+        // (via ServerBrowser.refresh) will be triggered when active.
+        try {
+            void handleRefresh();
+        } catch (e) {
+            console.warn('Auto-refresh failed:', e);
+        }
     }, REFRESH_INTERVAL);
 });
 
