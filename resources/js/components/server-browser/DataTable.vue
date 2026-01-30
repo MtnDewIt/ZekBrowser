@@ -33,38 +33,30 @@ const props = defineProps<
 {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
+    searchOptions?: { label: string; value: string }[]
+    initialSearchMode?: string
+    initialSorting?: SortingState
+    players?: number | null
+    servers?: number | null
 }>();
 
-const sorting = ref<SortingState>(
-[
-    { 
-        id: 'numPlayers', 
-        desc: true 
+const sorting = ref<SortingState>(props.initialSorting ?? [
+    {
+        id: 'numPlayers',
+        desc: true,
     }
 ]);
 
 const columnFilters = ref<ColumnFiltersState>([])
 const globalFilter = ref('')
-const searchMode = ref<'all' | 'name' | 'host' | 'mods'>('all')
-const searchOptions = 
-[
-    { 
-        label: 'All', 
-        value: 'all' 
-    },
-    { 
-        label: 'Server Name', 
-        value: 'name' 
-    },
-    { 
-        label: 'Host', 
-        value: 'host' 
-    },
-    { 
-        label: 'Mods', 
-        value: 'mods' 
-    },
+const searchMode = ref<string>(props.initialSearchMode ?? 'all')
+const defaultSearchOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Server Name', value: 'name' },
+    { label: 'Host', value: 'host' },
+    { label: 'Mods', value: 'mods' },
 ]
+const searchOptions = props.searchOptions ?? defaultSearchOptions;
 
 const table = useVueTable({
     get data() { return props.data },
@@ -78,40 +70,56 @@ const table = useVueTable({
     globalFilterFn: (row, columnId, filterValue) => 
     {
         const searchValue = String(filterValue).toLowerCase();
-        const mode = searchMode.value;
-        
+        const mode = String(searchMode.value || 'all');
+
         if (!searchValue) return true;
-        
-        if (mode === 'name') 
-        {
-            const name = String(row.getValue('name') || '').toLowerCase();
-            return name.includes(searchValue);
+
+        const check = (val: any) => String(val ?? '').toLowerCase().includes(searchValue);
+
+        if (mode === 'name' || mode === 'server') {
+            return check(row.getValue('name')) || check(row.getValue('server_name'));
         }
-        
-        if (mode === 'host') 
-        {
-            const host = String(row.getValue('hostPlayer') || '').toLowerCase();
-            return host.includes(searchValue);
+
+        if (mode === 'host') {
+            return check(row.getValue('hostPlayer'));
         }
-        
-        if (mode === 'mods') 
-        {
+
+        if (mode === 'mods') {
             const mods = row.original?.mods || [];
-
-            return mods.some(mod => 
-                String(mod?.mod_name || '').toLowerCase().includes(searchValue)
-            );
+            return mods.some((mod: any) => check(mod?.mod_name));
         }
 
-        const name = String(row.getValue('name') || '').toLowerCase();
-        const host = String(row.getValue('hostPlayer') || '').toLowerCase();
-        const mods = row.original?.mods || [];
+        if (mode === 'map') {
+            return check(row.getValue('map')) || check(row.getValue('map_name')) || check(row.getValue('mapName'));
+        }
 
-        const modMatch = mods.some(mod => 
-            String(mod?.mod_name || '').toLowerCase().includes(searchValue)
-        );
-        
-        return name.includes(searchValue) || host.includes(searchValue) || modMatch;
+        if (mode === 'gametype') {
+            return check(row.getValue('gametype')) || check(row.getValue('gametype_name'));
+        }
+
+        if (mode === 'variant') {
+            return check(row.getValue('variant')) || check(row.getValue('variant_name')) || check(row.getValue('variantType'));
+        }
+
+        if (mode === 'description') {
+            return check(row.getValue('description')) || check(row.original?.description);
+        }
+
+        // default 'all' mode: try several common fields
+        const fields = [
+            row.getValue('name'),
+            row.getValue('server_name'),
+            row.getValue('hostPlayer'),
+            row.getValue('map'),
+            row.getValue('map_name'),
+            row.getValue('gametype'),
+            row.getValue('variant'),
+            row.getValue('description'),
+        ];
+        if (fields.some(f => check(f))) return true;
+        const mods = row.original?.mods || [];
+        if (mods.some((mod: any) => check(mod?.mod_name))) return true;
+        return false;
     },
     state: 
     {
@@ -135,7 +143,11 @@ const table = useVueTable({
 
 <template>
 
-    <div class="flex items-center gap-2 py-4">
+    <div class="flex items-center justify-center gap-4 py-4" style="transform: translateY(-56px);">
+        <div class="flex-shrink-0">
+            <slot name="left" />
+        </div>
+
         <div class="relative w-full max-w-sm">
             <Input 
                 class="rounded-md pr-10" 
@@ -145,6 +157,17 @@ const table = useVueTable({
             />
             <div class="absolute right-2 top-1/2 -translate-y-1/2">
                 <Select v-model="searchMode" :options="searchOptions" :iconOnly="true" />
+            </div>
+        </div>
+
+        <div class="ml-3 flex items-center gap-3 text-sm text-muted-foreground min-w-[160px] justify-end">
+            <div class="flex items-center gap-1">
+                <span class="font-semibold tabular-nums">{{ props.players ?? '—' }}</span>
+                <span class="opacity-80">Players</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="font-semibold tabular-nums">{{ props.servers ?? '—' }}</span>
+                <span class="opacity-80">Servers</span>
             </div>
         </div>
     </div>

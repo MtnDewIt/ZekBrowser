@@ -22,6 +22,7 @@ const servers = ref<ElDewritoServer[]>([]);
 
 const showBrowser = ref(false);
 const browserStatus = ref('Loading...');
+const activeBrowser = ref<'eldewrito' | 'cartographer'>('eldewrito');
 
 const statsStatus = ref('Loading...');
 const chartOptions = ref({
@@ -63,13 +64,28 @@ const chartOptions = ref({
     },
 });
 
-function fetchZekBrowser() 
+async function fetchZekBrowser() 
 {
     return fetch(props.zekBrowserApi)
         .then((response) => response.json())
         .then((data) => 
         {
-            updateCounts(data.count);
+            // Only update the header counts from ElDewrito data when the
+            // active server browser is not Cartographer. If the user is
+            // viewing Cartographer, that component will emit its own counts.
+            try 
+            {
+                const active = serverBrowser.value && typeof serverBrowser.value.getSelection === 'function' ? serverBrowser.value.getSelection() : null;
+
+                if (active !== 'cartographer') 
+                {
+                    updateCounts(data.count);
+                }
+            } 
+            catch (e) 
+            {
+                updateCounts(data.count);
+            }
 
             const serverArray: object[] = [];
 
@@ -153,7 +169,19 @@ function updateCounts(count)
 
 function fetchStats() 
 {
-    fetch(`${props.zekBrowserApi}stats`)
+    var statsURL = '';
+
+    if (activeBrowser.value === 'eldewrito') 
+    {
+        statsURL = `${props.zekBrowserApi}stats`;
+    } 
+
+    if (activeBrowser.value === 'cartographer') 
+    {
+        statsURL = `${props.zekBrowserApi}cartographer/stats`;
+    }
+
+    fetch(statsURL)
         .then((response) => response.json())
         .then((data) => 
         {
@@ -192,6 +220,24 @@ const REFRESH_INTERVAL = 15000; // 30 seconds
 let refreshTimer: number | null = null;
 
 const isRefreshing = ref(false);
+const serverBrowser = ref<any>(null);
+const cartoCountsLoading = ref(false);
+
+function handleChildCounts(payload: { players: number; servers: number }) {
+    playerCount.value = payload.players;
+    serverCount.value = payload.servers;
+    const rip = playerCount.value === 0 ? ' rip' : '';
+    browserStatus.value = `${playerCount.value} players on ${serverCount.value} servers.${rip}`;
+}
+
+function handleChildCountsLoading(val: boolean) {
+    cartoCountsLoading.value = val;
+}
+
+function handleBrowserChange(browserType: 'eldewrito' | 'cartographer') {
+    activeBrowser.value = browserType;
+    fetchStats();
+}
 
 async function handleRefresh() 
 {
@@ -199,7 +245,21 @@ async function handleRefresh()
     const minDelay = new Promise(resolve => setTimeout(resolve, 600));
     try 
     {
-        await Promise.all([fetchZekBrowser(), minDelay]);
+        // Give the ServerBrowser a chance to handle the refresh (e.g., Cartographer view)
+        let handled = false;
+        if (serverBrowser.value && typeof serverBrowser.value.refresh === 'function') {
+            try {
+                handled = await serverBrowser.value.refresh();
+            } catch (e) {
+                console.warn('serverBrowser.refresh() failed:', e);
+            }
+        }
+
+        if (!handled) {
+            await Promise.all([fetchZekBrowser(), minDelay]);
+        } else {
+            await minDelay;
+        }
     } 
     catch (error) 
     {
@@ -216,10 +276,16 @@ onMounted(async () =>
     fetchZekBrowser();
     fetchStats();
     
-    // Set up auto-refresh every 30 seconds
+    // Set up auto-refresh every interval; delegate to the shared handler
     refreshTimer = globalThis.setInterval(() => 
     {
-        fetchZekBrowser();
+        // Use the same refresh flow as manual refresh so Cartographer
+        // (via ServerBrowser.refresh) will be triggered when active.
+        try {
+            void handleRefresh();
+        } catch (e) {
+            console.warn('Auto-refresh failed:', e);
+        }
     }, REFRESH_INTERVAL);
 });
 
@@ -238,7 +304,7 @@ onUnmounted(() =>
     <Head title="ZekBrowser">
         <meta
             name="description"
-            content="Find and join ElDewrito servers with the server browser. Play unique maps, game modes, and mods from the community."
+            content="Find and join halo servers with the server browser. Play unique maps, game modes, and mods from the community."
         />
     </Head>
 
@@ -248,7 +314,7 @@ onUnmounted(() =>
                 <div class="header-container">
                     <div class="header-left">
                         <h1 class="title is-2">ZekBrowser</h1>
-                        <p class="subtitle is-spaced">{{ browserStatus }}</p>
+                        <p class="subtitle is-spaced"></p>
                     </div>
                     <div class="header-right">
                         <button
@@ -267,7 +333,7 @@ onUnmounted(() =>
                     </div>
                 </div>
             
-                <ServerBrowser v-if="showBrowser" :servers="servers" />
+                <ServerBrowser ref="serverBrowser" v-if="showBrowser" :servers="servers" @counts="handleChildCounts" @counts-loading="handleChildCountsLoading" @browser-change="handleBrowserChange" />
             
                 <div class="header-container-stats">
                     <h2 class="title is-3">Stats</h2>
@@ -327,6 +393,9 @@ onUnmounted(() =>
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    /* ensure header actions sit above translated search-row so they're clickable */
+    position: relative;
+    z-index: 30;
 }
 
 .refresh-button 
@@ -340,6 +409,8 @@ onUnmounted(() =>
     align-items: center;
     justify-content: center;
     transition: all 0.15s ease;
+    height: 36px;
+    width: 36px;
 }
 
 .refresh-button:hover 
@@ -371,6 +442,11 @@ onUnmounted(() =>
 .animate-spin 
 {
     animation: spin 1s linear infinite;
+}
+
+:deep(.header-right .theme-toggle) {
+    height: 36px;
+    width: 36px;
 }
 
 @keyframes spin 

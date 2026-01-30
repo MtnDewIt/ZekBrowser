@@ -3,7 +3,8 @@
 import { Download, Package } from 'lucide-vue-next';
 
 import { Button } from '@/components/ui/button';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import ClickPopover from '@/components/ui/click-popover/ClickPopover.vue';
+import { ref } from 'vue';
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -17,7 +18,22 @@ interface Props
 }
 
 const props = defineProps<Props>();
+const open = ref(false);
+const _ignoreOpenUntil = ref(0);
 
+function toggleOpen() {
+    const now = Date.now();
+
+    if (open.value) {
+        open.value = false;
+        _ignoreOpenUntil.value = now + 300;
+        return;
+    }
+
+    if (now < _ignoreOpenUntil.value) return;
+
+    open.value = true;
+}
 const total = props.mods?.reduce((acc, mod) => acc + mod.package_size, 0);
 
 const size = (bytes) => 
@@ -31,12 +47,20 @@ const size = (bytes) =>
 </script>
 
 <template>
-    <HoverCard v-if="mods?.length > 0">
-        <HoverCardTrigger as-child>
-            <Package v-if="!showAsNumber" :size="18" class="ml-2 inline opacity-40 hover:opacity-60"/>
-            <span v-else class="cursor-default hover:opacity-80">{{ mods.length }}</span>
-        </HoverCardTrigger>
-        <HoverCardContent class="w-90 p-0 bg-background/100 dark:bg-background/100 backdrop-blur-xs">
+        <ClickPopover v-if="mods?.length > 0" v-model:modelValue="open" placement="bottom">
+            <template #trigger>
+                <template v-if="!showAsNumber">
+                    <button type="button" class="icon-button ml-2 inline" @click.stop="toggleOpen">
+                        <Package :size="18" class="opacity-40 hover:opacity-60"/>
+                    </button>
+                </template>
+                <template v-else>
+                    <button type="button" class="mods-count-button cursor-pointer hover:opacity-80" @click.stop="toggleOpen">
+                        {{ mods.length }}
+                    </button>
+                </template>
+            </template>
+            <div class="w-90 p-0 bg-background/100 dark:bg-background/100 backdrop-blur-xs">
             <ScrollArea class="h-64 w-full">
                 <div class="p-4 mods-card">
                     <h4 class="mb-4 text-foreground has-text-weight-semibold">
@@ -81,6 +105,6 @@ const size = (bytes) =>
                     </div>
                 </div>
             </ScrollArea>
-        </HoverCardContent>
-    </HoverCard>
+            </div>
+        </ClickPopover>
 </template>

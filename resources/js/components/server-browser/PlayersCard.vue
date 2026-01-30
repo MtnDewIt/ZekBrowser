@@ -1,8 +1,8 @@
 <script setup lang="ts">
 
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import ClickPopover from '@/components/ui/click-popover/ClickPopover.vue';
 import generateEmblem from '@/lib/emblemGenerator';
-import { reactive, computed } from 'vue';
+import { reactive, computed, ref } from 'vue';
 import '../../../css/PlayersCard.css';
 
 interface Props 
@@ -117,7 +117,6 @@ function getEmblemSrc(emblem: string | null | undefined)
 function getDisplayEmblemSrc(emblem: string | null | undefined) 
 {
     const src = getEmblemSrc(emblem);
-
     return src || '/assets/emblems/default.png';
 }
 
@@ -681,6 +680,26 @@ const processedPlayers = computed(() =>
     });
 });
 
+const open = ref(false);
+const _ignoreOpenUntil = ref(0);
+
+function toggleOpen() {
+    const now = Date.now();
+
+    // If currently open, close and prevent immediate re-open for a short window.
+    if (open.value) {
+        open.value = false;
+        _ignoreOpenUntil.value = now + 300;
+        return;
+    }
+
+    // If we're within the ignore window, do nothing (prevents click-close-then-open).
+    if (now < _ignoreOpenUntil.value) return;
+
+    open.value = true;
+    void preloadAllPlayers();
+}
+
 const sortedPlayers = computed(() => 
 {
     const items = processedPlayers.value.slice();
@@ -830,11 +849,18 @@ const groupedPlayers = computed(() =>
 
 <template>
     <template v-if="numPlayers > 0">
-        <HoverCard>
-            <HoverCardTrigger as-child @mouseenter="preloadAllPlayers">
-                <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>
-            </HoverCardTrigger>
-            <HoverCardContent class="playercard-content bg-background/100 dark:bg-background/100 backdrop-blur-xs">
+                    <ClickPopover v-model:modelValue="open" placement="bottom">
+                        <template #trigger>
+                            <button
+                                type="button"
+                                class="player-count-button cursor-pointer"
+                                @click.stop="toggleOpen"
+                            >
+                                {{ numPlayers }}/{{ maxPlayers }}
+                            </button>
+                        </template>
+
+                        <div class="playercard-content bg-background/100 dark:bg-background/100 backdrop-blur-xs">
                 <template v-if="passworded">
                     <div class="text-sm text-muted-foreground">Private Server</div>
                 </template>
@@ -937,8 +963,8 @@ const groupedPlayers = computed(() =>
                         </tbody>
                     </table>
                 </template>
-            </HoverCardContent>
-        </HoverCard>
+                    </div>
+                </ClickPopover>
     </template>
     <template v-else>
         <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>

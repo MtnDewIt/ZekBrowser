@@ -9,7 +9,7 @@ createServer((page) =>
     createInertiaApp({
         page,
         render: renderToString,
-        title: (title) => `${title} - ElDewrito Server Browser`,
+        title: (title) => `${title} - Halo Server Browser`,
         resolve: resolvePage,
         setup: ({ App, props, plugin }) =>
             createSSRApp({ render: () => h(App, props) })
