@@ -7,6 +7,7 @@ import PlayersCard from '@/components/server-browser/PlayersCard.vue';
 import CartographerBrowser from '@/components/server-browser/CartographerBrowser.vue';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { h, ref, defineExpose, watch, onMounted } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 
@@ -24,7 +25,7 @@ const selected = ref('eldewrito');
 onMounted(() => {
     try {
         const v = localStorage.getItem(STORAGE_KEY);
-        if (v === 'cartographer' || v === 'eldewrito') selected.value = v;
+        if (v === 'cartographer' || v === 'eldewrito' || v === 'haloce' || v === 'halopc') selected.value = v;
     } catch (e) {
         // ignore (e.g., unavailable in some environments)
     }
@@ -49,7 +50,8 @@ watch(selected, (v) => {
     if (v === 'cartographer') {
         fetchCartoCounts();
     } else {
-        // compute counts from parent-provided `props.servers`
+        // For non-Cartographer (ElDewrito / Halo CE) compute counts from
+        // parent-provided `props.servers` for now (no API hookup yet).
         try {
             const srv = Array.isArray(props.servers) ? props.servers : [];
             let players = 0;
@@ -64,7 +66,7 @@ watch(selected, (v) => {
 
 // update elderwrito counts when parent servers prop changes
 watch(() => props.servers, (val) => {
-    if (selected.value === 'eldewrito') {
+    if (selected.value === 'eldewrito' || selected.value === 'haloce' || selected.value === 'halopc') {
         try {
             const srv = Array.isArray(val) ? val : [];
             let players = 0;
@@ -81,10 +83,18 @@ const cartoRef = ref(null as any);
 const currentPlayers = ref<number>(0);
 const currentServers = ref<number>(0);
 
+// Halo CE placeholder search state (UI-only for now)
+const haloSearch = ref('');
+const haloSearchMode = ref('all');
+const haloSearchOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Server Name', value: 'name' },
+];
+
 const emit = defineEmits<{
     (e: 'counts', payload: { players: number; servers: number }): void,
     (e: 'counts-loading', val: boolean): void,
-    (e: 'browser-change', browserType: 'eldewrito' | 'cartographer'): void,
+    (e: 'browser-change', browserType: 'eldewrito' | 'cartographer' | 'haloce' | 'halopc'): void,
 }>();
 
 async function fetchCartoCounts() {
@@ -294,9 +304,12 @@ const columns: ColumnDef<ElDewritoServer>[] =
                         <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
                             { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
                         ]" :full-width-trigger="true">
                             <template #trigger-content>
                                 <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
                                 <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
                             </template>
                         </Select>
@@ -304,6 +317,53 @@ const columns: ColumnDef<ElDewritoServer>[] =
                 </template>
             </DataTable>
         </div>
+
+        <div v-else-if="selected === 'haloce' || selected === 'halopc'">
+            <!-- UI-only placeholder for Halo CE: dropdown + search (no API hookup) -->
+            <div class="flex items-center justify-center gap-4 py-4" style="transform: translateY(-56px);">
+                <div class="flex-shrink-0">
+                    <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background">
+                        <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
+                            { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                            { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        ]" :full-width-trigger="true">
+                            <template #trigger-content>
+                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                            </template>
+                        </Select>
+                    </div>
+                </div>
+
+                <div class="relative w-full max-w-sm">
+                    <Input
+                        class="rounded-md pr-10"
+                        placeholder="Halo server browser not connected"
+                        :model-value="haloSearch"
+                        @update:model-value="haloSearch = $event"
+                        disabled
+                    />
+                    <div class="absolute right-2 top-1/2 -translate-y-1/2">
+                        <Select v-model="haloSearchMode" :options="haloSearchOptions" :iconOnly="true" />
+                    </div>
+                </div>
+
+                <div class="ml-3 flex items-center gap-3 text-sm text-muted-foreground min-w-[160px] justify-end">
+                    <div class="flex items-center gap-1">
+                        <span class="font-semibold tabular-nums">—</span>
+                        <span class="opacity-80">Players</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="font-semibold tabular-nums">—</span>
+                        <span class="opacity-80">Servers</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div v-else>
             <CartographerBrowser ref="cartoRef">
                 <template #left>
@@ -311,9 +371,12 @@ const columns: ColumnDef<ElDewritoServer>[] =
                         <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
                             { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
                         ]" :full-width-trigger="true">
                             <template #trigger-content>
                                 <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
                                 <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
                             </template>
                         </Select>
