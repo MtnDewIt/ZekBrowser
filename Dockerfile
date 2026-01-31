@@ -33,7 +33,8 @@ RUN apk add --no-cache \
     libpng \
     oniguruma \
     libxml2 \
-    shadow
+    shadow \
+    sqlite
 
 RUN apk add --no-cache --virtual .build-deps \
     libpng-dev \
@@ -58,8 +59,14 @@ COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/default.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/backup.sh /usr/local/bin/backup.sh
+COPY docker/restore.sh /usr/local/bin/restore.sh
+
+RUN echo "0 */6 * * * /usr/local/bin/backup.sh >> /var/log/cron.log 2>&1" > /etc/crontabs/root
 
 RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && chmod +x /usr/local/bin/backup.sh \
+    && chmod +x /usr/local/bin/restore.sh \
     && chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
