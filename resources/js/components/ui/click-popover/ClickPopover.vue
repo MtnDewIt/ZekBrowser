@@ -1,4 +1,5 @@
 <script setup lang="ts">
+defineOptions({ inheritAttrs: false });
 import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
 
 const props = withDefaults(defineProps<{ modelValue?: boolean; placement?: 'bottom' | 'top' | 'left' | 'right' }>(), { modelValue: false, placement: 'bottom' });
@@ -94,7 +95,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="triggerRef">
+  <div ref="triggerRef" v-bind="$attrs">
     <slot name="trigger" />
   </div>
 

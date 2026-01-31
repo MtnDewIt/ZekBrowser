@@ -224,7 +224,6 @@ async function load() {
     
     // Swap in the new server list once ready.
     servers.value = newServers;
-    console.debug('Cartographer: loaded', servers.value.length, 'servers');
     
   } 
   catch (err: any) 
