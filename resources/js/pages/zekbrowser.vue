@@ -260,6 +260,12 @@ async function handleRefresh()
         } else {
             await minDelay;
         }
+        // Refresh stats after the server list/counts refresh so charts stay in sync
+        try {
+            fetchStats();
+        } catch (e) {
+            console.warn('fetchStats() failed after refresh:', e);
+        }
     } 
     catch (error) 
     {
