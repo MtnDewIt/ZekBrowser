@@ -16,3 +16,12 @@ For issues, questions, or contributions, please visit the [GitHub repository](ht
 
 This project is based on the original work by **pauwlo** — see
 [ElDewrito-Services](https://github.com/Pauwlo/ElDewrito-Services).
+
+## Unraid Configuration
+
+To ensure your database persists across updates in Unraid, you **must** configure a Path mapping:
+
+1.  **Container Path**: `/var/www/database`
+2.  **Host Path**: direct to a share, e.g., `/mnt/user/appdata/zekbrowser/database/`
+
+**Note**: If you have an existing `database.sqlite` file (e.g. from a backup) that you wish to import into the new volume, you can mount the folder containing it to `/legacy_database_import` (Container Path) for the first startup. The system will copy it into the proper location automatically.

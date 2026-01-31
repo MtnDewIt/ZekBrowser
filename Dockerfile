@@ -2,6 +2,8 @@ FROM php:8.5-fpm-alpine AS builder
 
 WORKDIR /var/www
 
+VOLUME ["/var/www/database", "/var/www/storage"]
+
 RUN apk add --no-cache \
     git \
     curl \

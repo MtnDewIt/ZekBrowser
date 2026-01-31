@@ -8,7 +8,8 @@ services:
     working_dir: /var/www
     volumes:
       - ./storage:/var/www/storage
-      - ./database:/var/www/database
+      - zek_db:/var/www/database
+      - ./database:/legacy_database_import
       - ./backups:/var/www/backups
       - ./dewrito.json:/var/www/dewrito.json
     ports:
@@ -25,3 +26,6 @@ services:
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  zek_db:

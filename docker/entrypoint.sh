@@ -8,9 +8,18 @@ mkdir -p /var/www/storage/framework/cache
 mkdir -p /var/www/storage/logs
 mkdir -p /var/www/database
 
-if [ ! -f /var/www/database/database.sqlite ]; then
-    touch /var/www/database/database.sqlite
-    chown www-data:www-data /var/www/database/database.sqlite
+DB_FILE="/var/www/database/database.sqlite"
+LEGACY_DB="/legacy_database_import/database.sqlite"
+
+if [ ! -f "$DB_FILE" ]; then
+    if [ -f "$LEGACY_DB" ]; then
+        echo "Migrating legacy database..."
+        cp "$LEGACY_DB" "$DB_FILE"
+    else
+        echo "Creating new database..."
+        touch "$DB_FILE"
+    fi
+    chown www-data:www-data "$DB_FILE"
 fi
 
 if [ ! -f /var/www/.env ]; then
