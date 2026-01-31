@@ -52,6 +52,7 @@ if echo "$selection" | grep -q '^[0-9]\+$' && [ "$selection" -ge 0 ] && [ "$sele
     fi
     
     cp "$chosen_backup" "$DB_PATH"
+    chown www-data:www-data "$DB_PATH"
     echo "Restore complete."
     echo "It is recommended to restart the container."
 else
