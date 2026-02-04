@@ -128,26 +128,46 @@ async function fetchZekBrowser()
                 });
             });
 
-            servers.value = [];
-            serverArray.forEach((serverData) => 
-            {
-                try 
-                {
-                    const server = new ElDewritoServer(serverData);
-                    servers.value.push(server);
-                } 
-                catch (error) 
-                {
-                    if (error instanceof ValidationError) 
-                    {
-                        console.warn(`Validation failed for ${serverData.ip}:`, error.errors);
-                    } 
-                    else 
-                    {
-                        console.error(`Unexpected error for server ${serverData.ip}:`, error);
-                    }
+            // Update existing server instances in-place where possible (match by IP)
+            try {
+                const existingMap = new Map<string, any>();
+                for (const s of servers.value) {
+                    if (s && s.ip) existingMap.set(s.ip, s);
                 }
-            });
+
+                const newList: any[] = [];
+
+                serverArray.forEach((serverData) => {
+                    try {
+                        const existing = existingMap.get(serverData.ip);
+
+                        if (existing) {
+                            // validate by constructing a temporary instance then copy fields
+                            const tmp = new ElDewritoServer(serverData);
+                            Object.assign(existing, tmp);
+                            newList.push(existing);
+                            existingMap.delete(serverData.ip);
+                        } else {
+                            const server = new ElDewritoServer(serverData);
+                            newList.push(server);
+                        }
+                    } catch (error) {
+                        if (error instanceof ValidationError) {
+                            console.warn(`Validation failed for ${serverData.ip}:`, error.errors);
+                        } else {
+                            console.error(`Unexpected error for server ${serverData.ip}:`, error);
+                        }
+                    }
+                });
+
+                // Replace contents of the servers array in-place to preserve the reactive array reference
+                servers.value.splice(0, servers.value.length, ...newList);
+            } catch (e) {
+                // fallback: replace array if something unexpected happens
+                servers.value = serverArray.map(sd => {
+                    try { return new ElDewritoServer(sd); } catch { return null; }
+                }).filter(Boolean);
+            }
 
             showBrowser.value = true;
         })
