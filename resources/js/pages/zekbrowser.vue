@@ -299,6 +299,17 @@ async function handleRefresh()
 
 onMounted(async () => 
 {
+    // attempt to synchronize `activeBrowser` with the child `ServerBrowser`
+    try {
+        const sel = serverBrowser.value && typeof serverBrowser.value.getSelection === 'function'
+            ? serverBrowser.value.getSelection()
+            : null;
+
+        if (sel === 'cartographer' || sel === 'eldewrito') {
+            activeBrowser.value = sel;
+        }
+    } catch (e) { /* ignore */ }
+
     fetchZekBrowser();
     fetchStats();
     

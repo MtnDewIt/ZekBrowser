@@ -28,6 +28,10 @@ onMounted(() => {
     } catch (e) {
         // ignore (e.g., unavailable in some environments)
     }
+    // notify parent which browser is currently selected so parent
+    // can sync stats view on initial load
+    try { emit('browser-change', selected.value); } catch (e) { /* ignore */ }
+
     // emit initial counts for the active browser
     if (selected.value === 'cartographer') {
         fetchCartoCounts();
