@@ -27,6 +27,9 @@
         },
         {
             "list": "https://masterserver.zekken.rocks/list"
+        },
+        {
+            "list": "http://icebox.mx.mt/list"
         }
     ]
 }
