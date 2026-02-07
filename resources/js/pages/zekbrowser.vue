@@ -84,7 +84,10 @@ async function fetchZekBrowser()
             } 
             catch (e) 
             {
-                updateCounts(data.count);
+                // If child ref isn't available yet, respect the parent's reactive `activeBrowser`
+                if (activeBrowser.value !== 'cartographer' && activeBrowser.value !== 'haloce' && activeBrowser.value !== 'halopc') {
+                    updateCounts(data.count);
+                }
             }
 
             const serverArray: object[] = [];

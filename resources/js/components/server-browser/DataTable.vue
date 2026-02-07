@@ -77,7 +77,7 @@ const table = useVueTable({
         const check = (val: any) => String(val ?? '').toLowerCase().includes(searchValue);
 
         if (mode === 'name' || mode === 'server') {
-            return check(row.getValue('name')) || check(row.getValue('server_name'));
+            return check(row.getValue('name')) || check(row.getValue('server_name')) || check(row.getValue('hostname'));
         }
 
         if (mode === 'host') {
