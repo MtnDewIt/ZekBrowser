@@ -126,6 +126,8 @@ logger = logging.getLogger(__name__)
 eldewrito_cache: Dict[str, Any] = {}
 cartographer_cache: Dict[str, Any] = {}
 cartographer_summarized_cache: Dict[str, Any] = {}
+haloce_cache: Dict[str, Any] = {}
+halopc_cache: Dict[str, Any] = {}
 
 app = FastAPI()
 
@@ -414,9 +416,43 @@ def save_cartographer_stats(player_count: int, server_count: int):
 
 def save_haloce_stats(player_count: int, server_count: int):
     """Save current Halo CE stats to database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        now = datetime.now(timezone.utc)
+        
+        cursor.execute("""
+            INSERT INTO halo_ce_stats (player_count, server_count, recorded_at)
+            VALUES (?, ?, ?)
+        """, (player_count, server_count, now))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Saved Halo CE stats: {server_count} servers, {player_count} players")
+    except Exception as e:
+        logger.error(f"Failed to save Halo CE stats: {e}")
 
-def save_haloce_stats(player_count: int, server_count: int):
+def save_halopc_stats(player_count: int, server_count: int):
     """Save current Halo PC stats to database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        now = datetime.now(timezone.utc)
+        
+        cursor.execute("""
+            INSERT INTO halo_pc_stats (player_count, server_count, recorded_at)
+            VALUES (?, ?, ?)
+        """, (player_count, server_count, now))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"Saved Halo PC stats: {server_count} servers, {player_count} players")
+    except Exception as e:
+        logger.error(f"Failed to save Halo PC stats: {e}")
 
 def get_eldewrito_stats_history() -> Dict[str, List[List[int]]]:
     """Retrieve historical ElDewrito stats from database."""
@@ -444,7 +480,7 @@ def get_eldewrito_stats_history() -> Dict[str, List[List[int]]]:
             "servers": servers
         }
     except Exception as e:
-        logger.error(f"Failed to retrieve stats: {e}")
+        logger.error(f"Failed to retrieve ElDewrito stats: {e}")
         return {
             "players": [],
             "servers": []
@@ -484,9 +520,67 @@ def get_cartographer_stats_history() -> Dict[str, List[List[int]]]:
 
 def get_haloce_stats_history() -> Dict[str, List[List[int]]]:
     """Retrieve historical Halo CE stats from database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                CAST(strftime('%s', recorded_at) AS INTEGER) * 1000 as timestamp,
+                player_count,
+                server_count
+            FROM halo_ce_stats
+            ORDER BY recorded_at ASC
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        players = [[row[0], row[1]] for row in rows]
+        servers = [[row[0], row[2]] for row in rows]
+        
+        return {
+            "players": players,
+            "servers": servers
+        }
+    except Exception as e:
+        logger.error(f"Failed to retrieve Halo CE stats: {e}")
+        return {
+            "players": [],
+            "servers": []
+        }
 
 def get_halopc_stats_history() -> Dict[str, List[List[int]]]:
     """Retrieve historical Halo PC stats from database."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                CAST(strftime('%s', recorded_at) AS INTEGER) * 1000 as timestamp,
+                player_count,
+                server_count
+            FROM halo_pc_stats
+            ORDER BY recorded_at ASC
+        """)
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        players = [[row[0], row[1]] for row in rows]
+        servers = [[row[0], row[2]] for row in rows]
+        
+        return {
+            "players": players,
+            "servers": servers
+        }
+    except Exception as e:
+        logger.error(f"Failed to retrieve Halo PC stats: {e}")
+        return {
+            "players": [],
+            "servers": []
+        }
 
 async def update_eldewrito_cache():
     """Main logic: Pulls master lists, dedupes, queries servers, updates cache."""
@@ -751,9 +845,23 @@ async def background_cartographer_refresher():
 
 async def background_haloce_refresher():
     """Runs the Halo CE update logic every X seconds."""
+    while True:
+        start_time = datetime.now()
+        await update_haloce_cache()
+        elapsed = (datetime.now() - start_time).total_seconds()
+        
+        sleep_time = max(0, REFRESH_INTERVAL - elapsed)
+        await asyncio.sleep(sleep_time)
 
 async def background_halopc_refresher():
     """Runs the Halo PC update logic every X seconds."""
+    while True:
+        start_time = datetime.now()
+        await update_halopc_cache()
+        elapsed = (datetime.now() - start_time).total_seconds()
+        
+        sleep_time = max(0, REFRESH_INTERVAL - elapsed)
+        await asyncio.sleep(sleep_time)
 
 async def background_eldewrito_stats_recorder():
     """Records ElDewrito stats to database every 5 minutes."""
@@ -777,9 +885,23 @@ async def background_cartographer_stats_recorder():
 
 async def background_haloce_stats_recorder():
     """Records Halo CE stats to database every 5 minutes."""
+    while True:
+        await asyncio.sleep(STATS_INTERVAL)
+        
+        if haloce_cache and "count" in haloce_cache:
+            player_count = haloce_cache["count"].get("players", 0)
+            server_count = haloce_cache["count"].get("servers", 0)
+            save_haloce_stats(player_count, server_count)
 
 async def background_halopc_stats_recorder():
     """Records Halo PC stats to database every 5 minutes."""
+    while True:
+        await asyncio.sleep(STATS_INTERVAL)
+        
+        if halopc_cache and "count" in halopc_cache:
+            player_count = halopc_cache["count"].get("players", 0)
+            server_count = halopc_cache["count"].get("servers", 0)
+            save_halopc_stats(player_count, server_count)
 
 # --- FastAPI Events & Routes ---
 
@@ -805,7 +927,7 @@ async def get_eldewrito_servers():
     if not eldewrito_cache:
         return JSONResponse(
             status_code=503, 
-            content={"error": "Server is warming up, please try again in a few seconds."}
+            content={"error": "ElDewrito data is warming up, please try again in a few seconds."}
         )
     return eldewrito_cache
 
@@ -905,20 +1027,36 @@ async def get_cartographer_server_detail(server_id: str):
 @app.get("/api/haloce")
 async def get_haloce_servers():
     """Serve the current cached Halo CE server data."""
+    if not haloce_cache:
+        return JSONResponse(
+            status_code=503, 
+            content={"error": "Halo CE data is warming up, please try again in a few seconds."}
+        )
+    return haloce_cache
 
 @app.get("/api/haloce/stats")
 async def get_haloce_historical_stats():
     """Serve historical Halo CE stats data for charting."""
+    stats = get_haloce_stats_history()
+    return stats
 
 # --- Halo PC FastAPI Routes ---
 
 @app.get("/api/halopc")
 async def get_haloce_servers():
     """Serve the current cached Halo PC server data."""
+    if not halopc_cache:
+        return JSONResponse(
+            status_code=503, 
+            content={"error": "Halo CE data is warming up, please try again in a few seconds."}
+        )
+    return halopc_cache
 
 @app.get("/api/halopc/stats")
 async def get_haloce_historical_stats():
     """Serve historical Halo PC stats data for charting."""
+    stats = get_halopc_stats_history()
+    return stats
 
 # --- Entry Point ---
 
