@@ -22,7 +22,7 @@ const servers = ref<ElDewritoServer[]>([]);
 
 const showBrowser = ref(false);
 const browserStatus = ref('Loading...');
-const activeBrowser = ref<'eldewrito' | 'cartographer'>('eldewrito');
+const activeBrowser = ref<'eldewrito' | 'cartographer' | 'haloce' | 'halopc'>('eldewrito');
 
 const statsStatus = ref('Loading...');
 const chartOptions = ref({
@@ -201,6 +201,16 @@ function fetchStats()
         statsURL = `${props.zekBrowserApi}cartographer/stats`;
     }
 
+    if (activeBrowser.value === 'haloce') 
+    {
+        statsURL = `${props.zekBrowserApi}haloce/stats`;
+    } 
+
+    if (activeBrowser.value === 'halopc') 
+    {
+        statsURL = `${props.zekBrowserApi}halopc/stats`;
+    }
+
     fetch(statsURL)
         .then((response) => response.json())
         .then((data) => 
@@ -254,7 +264,7 @@ function handleChildCountsLoading(val: boolean) {
     cartoCountsLoading.value = val;
 }
 
-function handleBrowserChange(browserType: 'eldewrito' | 'cartographer') {
+function handleBrowserChange(browserType: 'eldewrito' | 'cartographer' | 'haloce' | 'halopc') {
     activeBrowser.value = browserType;
     fetchStats();
 }
@@ -305,7 +315,7 @@ onMounted(async () =>
             ? serverBrowser.value.getSelection()
             : null;
 
-        if (sel === 'cartographer' || sel === 'eldewrito') {
+        if (sel === 'cartographer' || sel === 'eldewrito' || sel === 'haloce' || sel === 'halopc') {
             activeBrowser.value = sel;
         }
     } catch (e) { /* ignore */ }
