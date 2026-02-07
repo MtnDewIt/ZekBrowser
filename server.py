@@ -123,7 +123,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # --- Global State (Cache) ---
-api_cache: Dict[str, Any] = {}
+eldewrito_cache: Dict[str, Any] = {}
 cartographer_cache: Dict[str, Any] = {}
 cartographer_summarized_cache: Dict[str, Any] = {}
 
@@ -145,9 +145,8 @@ def clean_string_field(s: Any) -> Any:
     s = ''.join(c for c in s if ord(c) >= 0x20 and ord(c) != 0x7f)
     return s.strip()
 
-
-def decode_pproperties(pp: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Decode pProperties array into named fields."""
+def decode_properties(pp: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Decode properties array into named fields."""
     out = {}
     raw_props = []
     pm = PROPERTY_MAP
@@ -164,7 +163,6 @@ def decode_pproperties(pp: List[Dict[str, Any]]) -> Dict[str, Any]:
     out['_raw'] = raw_props
     return out
 
-
 def summarize_server(data: Dict[str, Any]) -> Dict[str, Any]:
     """Summarize Cartographer server data into a clean format."""
     if data is None:
@@ -172,8 +170,8 @@ def summarize_server(data: Dict[str, Any]) -> Dict[str, Any]:
     summary = {}
     summary['xuid'] = data.get('xuid') or data.get('XUID') or None
     summary['players'] = { 'filled': data.get('dwFilledPublicSlots'), 'max': data.get('dwMaxPublicSlots') }
-    pp = data.get('pProperties') or []
-    decoded = decode_pproperties(pp)
+    pp = data.get('properties') or []
+    decoded = decode_properties(pp)
 
     server_name = decoded.get('server_name', {}).get('value') or decoded.get('prop_0x40008230', {}).get('value') or ''
     server_name = server_name.strip()
@@ -217,7 +215,6 @@ def summarize_server(data: Dict[str, Any]) -> Dict[str, Any]:
     summary['decoded_properties'] = decoded
     return summary
 
-
 async def fetch_cartographer_server_details(client: httpx.AsyncClient, server_id: Any) -> Optional[Dict[str, Any]]:
     """Fetch details for a single Cartographer server."""
     url = f"{CARTOGRAPHER_SERVER_URL}/{server_id}"
@@ -231,7 +228,7 @@ async def fetch_cartographer_server_details(client: httpx.AsyncClient, server_id
 
 # --- Database Functions ---
 
-async def fetch_legacy_stats() -> Optional[Dict[str, List[List[int]]]]:
+async def fetch_legacy_eldewrito_stats() -> Optional[Dict[str, List[List[int]]]]:
     """Fetch historical ElDewrito stats from legacy API."""
     try:
         async with httpx.AsyncClient() as client:
@@ -251,7 +248,7 @@ async def fetch_legacy_stats() -> Optional[Dict[str, List[List[int]]]]:
         logger.warning(f"Failed to fetch legacy ElDewrito stats: {e}")
         return None
 
-def populate_stats_from_legacy(legacy_data: Dict[str, List[List[int]]]):
+def populate_from_legacy_eldewrito_stats(legacy_data: Dict[str, List[List[int]]]):
     """Populate ElDewrito database with legacy stats data."""
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -321,7 +318,41 @@ async def init_db():
         CREATE INDEX IF NOT EXISTS idx_cartographer_recorded_at 
         ON cartographer_stats(recorded_at)
     """)
-    
+
+    # Halo CE stats table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS halo_ce_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_count INTEGER NOT NULL DEFAULT 0,
+            server_count INTEGER NOT NULL DEFAULT 0,
+            recorded_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_halo_ce_recorded_at 
+        ON halo_ce_stats(recorded_at)
+    """)
+
+    # Halo PC stats table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS halo_pc_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_count INTEGER NOT NULL DEFAULT 0,
+            server_count INTEGER NOT NULL DEFAULT 0,
+            recorded_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_halo_pc_recorded_at 
+        ON halo_pc_stats(recorded_at)
+    """)
+
     # Only check ElDewrito stats for legacy data population
     cursor.execute("SELECT COUNT(*) FROM server_stats")
     eldewrito_count = cursor.fetchone()[0]
@@ -334,15 +365,12 @@ async def init_db():
     # Only populate legacy data for ElDewrito stats table
     if eldewrito_count == 0:
         logger.info("ElDewrito stats table is empty, attempting to fetch legacy data...")
-        legacy_data = await fetch_legacy_stats()
+        legacy_data = await fetch_legacy_eldewrito_stats()
         
         if legacy_data and (legacy_data.get("players") or legacy_data.get("servers")):
-            populate_stats_from_legacy(legacy_data)
+            populate_from_legacy_eldewrito_stats(legacy_data)
         else:
             logger.info("No legacy data available, starting with empty ElDewrito stats database")
-    
-    # Cartographer stats starts fresh - no legacy data needed
-    logger.info("Cartographer stats will be collected from this point forward")
 
 def save_eldewrito_stats(player_count: int, server_count: int):
     """Save current ElDewrito stats to database."""
@@ -384,7 +412,13 @@ def save_cartographer_stats(player_count: int, server_count: int):
     except Exception as e:
         logger.error(f"Failed to save Cartographer stats: {e}")
 
-def get_stats_history() -> Dict[str, List[List[int]]]:
+def save_haloce_stats(player_count: int, server_count: int):
+    """Save current Halo CE stats to database."""
+
+def save_haloce_stats(player_count: int, server_count: int):
+    """Save current Halo PC stats to database."""
+
+def get_eldewrito_stats_history() -> Dict[str, List[List[int]]]:
     """Retrieve historical ElDewrito stats from database."""
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -448,6 +482,78 @@ def get_cartographer_stats_history() -> Dict[str, List[List[int]]]:
             "servers": []
         }
 
+def get_haloce_stats_history() -> Dict[str, List[List[int]]]:
+    """Retrieve historical Halo CE stats from database."""
+
+def get_halopc_stats_history() -> Dict[str, List[List[int]]]:
+    """Retrieve historical Halo PC stats from database."""
+
+async def update_eldewrito_cache():
+    """Main logic: Pulls master lists, dedupes, queries servers, updates cache."""
+    global eldewrito_cache
+    
+    # 1. Load Master Server URLs from local JSON
+    try:
+        async with await anyio.open_file(ELDEWRITO_MASTER_LIST, 'r') as f:
+            data = await f.read()
+            config = json.loads(data)
+            master_entries = config.get("masterServers", [])
+            # Extract only the 'list' attribute
+            master_urls = [m['list'] for m in master_entries if 'list' in m]
+    except Exception as e:
+        logger.error(f"Error reading {ELDEWRITO_MASTER_LIST}: {e}")
+        return
+
+    async with httpx.AsyncClient() as client:
+        # 2. Query all master servers concurrently
+        logger.info(f"Querying {len(master_urls)} master servers...")
+        master_tasks = [fetch_master_list(client, url) for url in master_urls]
+        results = await asyncio.gather(*master_tasks)
+
+        # 3. Deduplicate IP:Port combos
+        unique_servers: Set[str] = set()
+        for server_list in results:
+            for ip_port in server_list:
+                unique_servers.add(ip_port)
+        
+        logger.info(f"Found {len(unique_servers)} unique game servers. Querying details...")
+
+        # 4. Query all game servers concurrently
+        # We limit concurrency slightly to avoid file descriptor limits if the list is huge,
+        # but for <100 servers, full concurrency is fine.
+        game_tasks = [fetch_game_server_info(client, srv) for srv in unique_servers]
+        game_results = await asyncio.gather(*game_tasks)
+
+        # 5. Build the final data structure
+        successful_servers = {}
+        total_players = 0
+        
+        for res in game_results:
+            if res:
+                ip_port, data = res
+                successful_servers[ip_port] = data
+                
+                # Safely add player count
+                if "numPlayers" in data:
+                    try:
+                        total_players += int(data["numPlayers"])
+                    except ValueError:
+                        pass
+
+        # 6. Format Final JSON
+        new_cache = {
+            "count": {
+                "players": total_players,
+                "servers": len(successful_servers)
+            },
+            "updatedAt": get_current_http_date(),
+            "servers": successful_servers
+        }
+
+        # Atomically update global cache
+        eldewrito_cache = new_cache
+        logger.info(f"Cache updated. Servers: {len(successful_servers)}, Players: {total_players}")
+
 async def update_cartographer_cache():
     """Fetch Cartographer server list and update cache with summarized data."""
     global cartographer_cache, cartographer_summarized_cache
@@ -470,7 +576,7 @@ async def update_cartographer_cache():
             mapped = []
             ids = []
             for item in raw_list:
-                if isinstance(item, dict) and (item.get('pProperties') or item.get('server_desc') or item.get('name')):
+                if isinstance(item, dict) and (item.get('properties') or item.get('server_desc') or item.get('name')):
                     mapped.append(summarize_server(item))
                 else:
                     ids.append(item)
@@ -528,6 +634,12 @@ async def update_cartographer_cache():
             
     except Exception as e:
         logger.error(f"Failed to update Cartographer cache: {e}")
+
+async def update_haloce_cache():
+    """Fetch Halo CE server list and update cache with summarized data."""
+
+async def update_halopc_cache():
+    """Fetch Halo PC server list and update cache with summarized data."""
 
 # --- Helper Functions ---
 
@@ -615,79 +727,13 @@ async def fetch_game_server_info(client: httpx.AsyncClient, ip_port: str) -> Opt
         logger.debug(f"Failed to fetch server info from {ip_port}: {e}")
         return None
 
-async def update_server_cache():
-    """Main logic: Pulls master lists, dedupes, queries servers, updates cache."""
-    global api_cache
-    
-    # 1. Load Master Server URLs from local JSON
-    try:
-        async with await anyio.open_file(ELDEWRITO_MASTER_LIST, 'r') as f:
-            data = await f.read()
-            config = json.loads(data)
-            master_entries = config.get("masterServers", [])
-            # Extract only the 'list' attribute
-            master_urls = [m['list'] for m in master_entries if 'list' in m]
-    except Exception as e:
-        logger.error(f"Error reading {ELDEWRITO_MASTER_LIST}: {e}")
-        return
-
-    async with httpx.AsyncClient() as client:
-        # 2. Query all master servers concurrently
-        logger.info(f"Querying {len(master_urls)} master servers...")
-        master_tasks = [fetch_master_list(client, url) for url in master_urls]
-        results = await asyncio.gather(*master_tasks)
-
-        # 3. Deduplicate IP:Port combos
-        unique_servers: Set[str] = set()
-        for server_list in results:
-            for ip_port in server_list:
-                unique_servers.add(ip_port)
-        
-        logger.info(f"Found {len(unique_servers)} unique game servers. Querying details...")
-
-        # 4. Query all game servers concurrently
-        # We limit concurrency slightly to avoid file descriptor limits if the list is huge,
-        # but for <100 servers, full concurrency is fine.
-        game_tasks = [fetch_game_server_info(client, srv) for srv in unique_servers]
-        game_results = await asyncio.gather(*game_tasks)
-
-        # 5. Build the final data structure
-        successful_servers = {}
-        total_players = 0
-        
-        for res in game_results:
-            if res:
-                ip_port, data = res
-                successful_servers[ip_port] = data
-                
-                # Safely add player count
-                if "numPlayers" in data:
-                    try:
-                        total_players += int(data["numPlayers"])
-                    except ValueError:
-                        pass
-
-        # 6. Format Final JSON
-        new_cache = {
-            "count": {
-                "players": total_players,
-                "servers": len(successful_servers)
-            },
-            "updatedAt": get_current_http_date(),
-            "servers": successful_servers
-        }
-
-        # Atomically update global cache
-        api_cache = new_cache
-        logger.info(f"Cache updated. Servers: {len(successful_servers)}, Players: {total_players}")
-
 # --- Background Task Loops ---
 
-async def background_refresher():
+async def background_eldewrito_refresher():
     """Runs the update logic every X seconds."""
     while True:
         start_time = datetime.now()
-        await update_server_cache()
+        await update_eldewrito_cache()
         elapsed = (datetime.now() - start_time).total_seconds()
         
         sleep_time = max(0, REFRESH_INTERVAL - elapsed)
@@ -703,14 +749,20 @@ async def background_cartographer_refresher():
         sleep_time = max(0, REFRESH_INTERVAL - elapsed)
         await asyncio.sleep(sleep_time)
 
-async def background_stats_recorder():
+async def background_haloce_refresher():
+    """Runs the Halo CE update logic every X seconds."""
+
+async def background_halopc_refresher():
+    """Runs the Halo PC update logic every X seconds."""
+
+async def background_eldewrito_stats_recorder():
     """Records ElDewrito stats to database every 5 minutes."""
     while True:
         await asyncio.sleep(STATS_INTERVAL)
         
-        if api_cache and "count" in api_cache:
-            player_count = api_cache["count"].get("players", 0)
-            server_count = api_cache["count"].get("servers", 0)
+        if eldewrito_cache and "count" in eldewrito_cache:
+            player_count = eldewrito_cache["count"].get("players", 0)
+            server_count = eldewrito_cache["count"].get("servers", 0)
             save_eldewrito_stats(player_count, server_count)
 
 async def background_cartographer_stats_recorder():
@@ -723,71 +775,48 @@ async def background_cartographer_stats_recorder():
             server_count = cartographer_cache["count"].get("servers", 0)
             save_cartographer_stats(player_count, server_count)
 
+async def background_haloce_stats_recorder():
+    """Records Halo CE stats to database every 5 minutes."""
+
+async def background_halopc_stats_recorder():
+    """Records Halo PC stats to database every 5 minutes."""
+
 # --- FastAPI Events & Routes ---
 
-@app.on_event("startup")
+@app.lifespan("startup")
 async def startup_event():
     await init_db()
 
     # TODO: This could probably be handled a lot better (these async tasks have no kill condition)
-    asyncio.create_task(background_refresher())
+    asyncio.create_task(background_eldewrito_refresher())
     asyncio.create_task(background_cartographer_refresher())
-    asyncio.create_task(background_stats_recorder())
+    asyncio.create_task(background_haloce_refresher())
+    asyncio.create_task(background_halopc_refresher())
+    asyncio.create_task(background_eldewrito_stats_recorder())
     asyncio.create_task(background_cartographer_stats_recorder())
+    asyncio.create_task(background_haloce_stats_recorder())
+    asyncio.create_task(background_halopc_stats_recorder())
+
+# --- ElDewrito FastAPI Routes ---
 
 @app.get("/api/")
-async def get_current_stats():
-    """Serve the current cached server data."""
-    if not api_cache:
+async def get_eldewrito_servers():
+    """Serve the current cached ElDewrito server data."""
+    if not eldewrito_cache:
         return JSONResponse(
             status_code=503, 
             content={"error": "Server is warming up, please try again in a few seconds."}
         )
-    return api_cache
+    return eldewrito_cache
 
 @app.get("/api/stats")
-async def get_historical_stats():
-    """Serve historical stats data for charting."""
-    stats = get_stats_history()
+async def get_eldewrito_historical_stats():
+    """Serve historical ElDewrito stats data for charting."""
+    stats = get_eldewrito_stats_history()
     return stats
-
-@app.get("/api/cartographer")
-async def get_cartographer_servers():
-    """Serve the current Cartographer server list (summarized)."""
-    if not cartographer_summarized_cache:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "Cartographer data is warming up, please try again in a few seconds."}
-        )
-    return cartographer_summarized_cache
-
-@app.get("/api/cartographer/stats")
-async def get_cartographer_historical_stats():
-    """Serve historical Cartographer stats data for charting."""
-    stats = get_cartographer_stats_history()
-    return stats
-
-@app.get("/api/cartographer/server/{server_id}")
-async def get_cartographer_server_detail(server_id: str):
-    """Fetch and return details for a specific Cartographer server."""
-    try:
-        async with httpx.AsyncClient(verify=False) as client:
-            server_data = await fetch_cartographer_server_details(client, server_id)
-            if server_data:
-                return server_data
-            return JSONResponse(
-                status_code=404,
-                content={"error": "Server not found"}
-            )
-    except Exception as e:
-        logger.error(f"Failed to fetch Cartographer server {server_id}: {e}")
-        return JSONResponse(
-            status_code=503,
-            content={"error": "Failed to fetch server details", "message": str(e)}
-        )
 
 @app.get("/api/servicerecord")
-async def get_service_record(uid: Optional[str] = None):
+async def get_eldewrito_service_record(uid: Optional[str] = None):
     """GET proxy: accept ?uid=... from address bar and forward to eldewrito API."""
     try:
         if not uid:
@@ -833,6 +862,63 @@ async def get_service_record(uid: Optional[str] = None):
     except Exception as e:
         logger.exception("Error proxying GET service record request")
         return JSONResponse(status_code=503, content={"error": "Failed to fetch service record", "message": str(e)})
+
+# --- Cartographer FastAPI Routes ---
+
+@app.get("/api/cartographer")
+async def get_cartographer_servers():
+    """Serve the current Cartographer server list (summarized)."""
+    if not cartographer_summarized_cache:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Cartographer data is warming up, please try again in a few seconds."}
+        )
+    return cartographer_summarized_cache
+
+@app.get("/api/cartographer/stats")
+async def get_cartographer_historical_stats():
+    """Serve historical Cartographer stats data for charting."""
+    stats = get_cartographer_stats_history()
+    return stats
+
+@app.get("/api/cartographer/server/{server_id}")
+async def get_cartographer_server_detail(server_id: str):
+    """Fetch and return details for a specific Cartographer server."""
+    try:
+        async with httpx.AsyncClient(verify=False) as client:
+            server_data = await fetch_cartographer_server_details(client, server_id)
+            if server_data:
+                return server_data
+            return JSONResponse(
+                status_code=404,
+                content={"error": "Server not found"}
+            )
+    except Exception as e:
+        logger.error(f"Failed to fetch Cartographer server {server_id}: {e}")
+        return JSONResponse(
+            status_code=503,
+            content={"error": "Failed to fetch server details", "message": str(e)}
+        )
+
+# --- Halo CE FastAPI Routes ---
+
+@app.get("/api/haloce")
+async def get_haloce_servers():
+    """Serve the current cached Halo CE server data."""
+
+@app.get("/api/haloce/stats")
+async def get_haloce_historical_stats():
+    """Serve historical Halo CE stats data for charting."""
+
+# --- Halo PC FastAPI Routes ---
+
+@app.get("/api/halopc")
+async def get_haloce_servers():
+    """Serve the current cached Halo PC server data."""
+
+@app.get("/api/halopc/stats")
+async def get_haloce_historical_stats():
+    """Serve historical Halo PC stats data for charting."""
 
 # --- Entry Point ---
 
