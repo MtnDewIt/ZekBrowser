@@ -77,7 +77,7 @@ async function fetchZekBrowser()
             {
                 const active = serverBrowser.value && typeof serverBrowser.value.getSelection === 'function' ? serverBrowser.value.getSelection() : null;
 
-                if (active !== 'cartographer') 
+                if (active !== 'cartographer' && active !== 'haloce' && active !== 'halopc') 
                 {
                     updateCounts(data.count);
                 }
