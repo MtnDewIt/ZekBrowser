@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class HaloCEStat extends Model
 {
+    protected $table = 'haloce_stats';
+
     protected $fillable =
     [
         'player_count',

@@ -17,4 +17,34 @@ class HaloCEProxyController extends Controller
     {
         $this->pythonApiUrl = config('eldewrito.python_api_url', 'http://127.0.0.1:8001');
     }
+
+    public function list()
+    {
+        $cacheKey = 'haloce:list';
+
+        // Return cached summary if available
+        if (Cache::has($cacheKey)) 
+        {
+            $cached = Cache::get($cacheKey);
+            
+            return response($cached, 200)->header('Content-Type', $this->applicationPath);
+        }
+
+        try 
+        {
+            // Use the new unified Python API endpoint that returns summarized data
+            $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/haloce");
+            $out = $response->body();
+            $status = $response->status();
+
+            // Cache the resulting JSON string for 30 seconds to avoid spamming upstream
+            Cache::put($cacheKey, $out, now()->addSeconds(30));
+
+            return response($out, $status)->header('Content-Type', $this->applicationPath);
+        } 
+        catch (\Exception $e) 
+        {
+            return response()->json(['error' => 'Failed to fetch halo ce list', 'message' => $e->getMessage()], 503);
+        }
+    }
 }

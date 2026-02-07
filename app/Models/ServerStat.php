@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ServerStat extends Model
 {
+    protected $table = 'server_stats';
+
     protected $fillable =
     [
         'player_count',

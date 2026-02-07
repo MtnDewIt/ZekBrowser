@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CartographerStat extends Model
 {
+    protected $table = 'cartographer_stats';
+
     protected $fillable =
     [
         'player_count',

@@ -4,10 +4,13 @@ import json
 import logging
 import socket
 import sqlite3
+import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import formatdate
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Set, Any, Optional
+from typing import Dict, List, Set, Any, Optional, Union
 
 import httpx
 import uvicorn
@@ -118,6 +121,304 @@ GAMETYPE_ID_TO_NAME = {
     10: "Stub",
 }
 
+# --- GameSpy Protocol Implementation ---
+class GameKeys(Enum):
+    HALO = "QW88cv"
+    HALOD = "yG3d9w"
+    HALOMACD = "e4Rd9J"
+    HALOMAC = "e4Rd9J"
+    HALOM = "e4Rd9J"
+    HALOR = "e4Rd9J"
+
+GAMESPY_IP_PORT_LENGTH = 6
+
+class GameSpyFlags:
+    A, B, C, D = 0x02, 0x08, 0x10, 0x20
+
+@dataclass
+class GameSpyServerAddress:
+    address: str
+    port: int
+
+@dataclass
+class GameSpyServer:
+    address: str
+    port: int
+    game: Optional[str] = None
+
+@dataclass
+class GameSpyServerResponse:
+    address: str
+    port: int
+    game: Optional[str]
+    data: Union[str, Dict[str, Any]]
+
+# GameSpy Decryption Algorithm
+def _enctypex_func5(encxkey: bytearray, cnt: int, id_bytes: bytes, idlen: int, n1: int, n2: int) -> tuple:
+    if cnt == 0: return 0, n1, n2
+    mask = 1
+    if cnt > 1:
+        while mask < cnt: mask = (mask << 1) + 1
+    i = 0
+    while True:
+        n1 = encxkey[n1 & 0xff] + id_bytes[n2]
+        n2 += 1
+        if n2 >= idlen:
+            n2 = 0
+            n1 += idlen
+        tmp = n1 & mask
+        i += 1
+        if i > 11: tmp %= cnt
+        if tmp <= cnt: break
+    return tmp, n1, n2
+
+def _enctypex_func4(encxkey: bytearray, id_bytes: bytes, idlen: int):
+    if idlen < 1: return
+    for i in range(256): encxkey[i] = i
+    n1 = n2 = 0
+    for i in range(255, -1, -1):
+        t1, n1, n2 = _enctypex_func5(encxkey, i, id_bytes, idlen, n1, n2)
+        t2 = encxkey[i]
+        encxkey[i] = encxkey[t1]
+        encxkey[t1] = t2
+    encxkey[256] = encxkey[1]
+    encxkey[257] = encxkey[3]
+    encxkey[258] = encxkey[5]
+    encxkey[259] = encxkey[7]
+    encxkey[260] = encxkey[n1 & 0xff]
+
+def _enctypex_func7(encxkey: bytearray, d: int) -> int:
+    a = encxkey[256]
+    b = encxkey[257]
+    c = encxkey[a]
+    encxkey[256] = (a + 1) & 0xff
+    encxkey[257] = (b + c) & 0xff
+    a = encxkey[260]
+    b = encxkey[257]
+    b = encxkey[b]
+    c = encxkey[a]
+    encxkey[a] = b
+    a = encxkey[259]
+    b = encxkey[257]
+    a = encxkey[a]
+    encxkey[b] = a
+    a = encxkey[256]
+    b = encxkey[259]
+    a = encxkey[a]
+    encxkey[b] = a
+    a = encxkey[256]
+    encxkey[a] = c
+    b = encxkey[258]
+    a = encxkey[c]
+    c = encxkey[259]
+    b = (b + a) & 0xff
+    encxkey[258] = b
+    a = b
+    c = encxkey[c]
+    b = encxkey[257]
+    b = encxkey[b]
+    a = encxkey[a]
+    c = (c + b) & 0xff
+    b = encxkey[260]
+    b = encxkey[b]
+    c = (c + b) & 0xff
+    b = encxkey[c]
+    c = encxkey[256]
+    c = encxkey[c]
+    a = (a + c) & 0xff
+    c = encxkey[b]
+    b = encxkey[a]
+    encxkey[260] = d & 0xff
+    c = c ^ b ^ (d & 0xff)
+    encxkey[259] = c & 0xff
+    return c & 0xff
+
+def _enctypex_func6(encxkey: bytearray, data: bytearray, length: int) -> int:
+    for i in range(length): data[i] = _enctypex_func7(encxkey, data[i])
+    return length
+
+def _enctypex_funcx(encxkey: bytearray, key: bytes, encxvalidate: bytearray, data: bytes, datalen: int):
+    keylen = len(key)
+    for i in range(datalen):
+        idx1 = (key[i % keylen] * i) & 7
+        idx2 = i & 7
+        encxvalidate[idx1] = (encxvalidate[idx1] ^ encxvalidate[idx2] ^ data[i]) & 0xff
+    _enctypex_func4(encxkey, bytes(encxvalidate), 8)
+
+def _enctypex_init(encxkey: bytearray, key: bytes, validate: bytes, data: bytearray) -> tuple:
+    datalen = len(data)
+    if datalen < 1: return None, 0
+    a = (data[0] ^ 0xec) + 2
+    if datalen < a: return None, 0
+    b = data[a - 1] ^ 0xea
+    if datalen < (a + b): return None, 0
+    encxvalidate = bytearray(validate[:8])
+    _enctypex_funcx(encxkey, key, encxvalidate, bytes(data[a:a+b]), b)
+    a += b
+    return data[a:], a
+
+def _enctypex_decoder(key: bytes, validate: bytes, data: bytes) -> bytes:
+    encxkey = bytearray(261)
+    data_array = bytearray(data)
+    result, offset = _enctypex_init(encxkey, key, validate, data_array)
+    if result is None: return None
+    result_array = bytearray(result)
+    _enctypex_func6(encxkey, result_array, len(result_array))
+    return bytes(result_array)
+
+def _gamespy_decryptx(key: str, validate: str, data: bytes) -> bytes:
+    try:
+        return _enctypex_decoder(key.encode('ascii'), validate.encode('ascii'), data)
+    except: return None
+
+def _make_validation_key() -> str:
+    return format(int(time.time() * 1000), 'x')[-8:].zfill(8)
+
+class GameSpyUDPClient:
+    def __init__(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.settimeout(0.1)
+    def close(self):
+        try: self.socket.close()
+        except: pass
+    def send_query(self, address: str, port: int, data: str):
+        try:
+            self.socket.sendto(data.encode('utf-8'), (address, port))
+            return True
+        except: return False
+    async def write(self, address: str, port: int, data: str):
+        return await asyncio.get_event_loop().run_in_executor(None, self.send_query, address, port, data)
+    def receive_responses(self, end_delay: float = 0.5) -> Optional[List[Dict]]:
+        responses = []
+        last_receive_time = time.time()
+        while True:
+            try:
+                data, addr = self.socket.recvfrom(4096)
+                responses.append({'address': addr[0], 'port': addr[1], 'data': data})
+                last_receive_time = time.time()
+            except socket.timeout:
+                if time.time() - last_receive_time > end_delay: break
+            except: break
+        return responses if responses else None
+    async def read_all(self, end_delay: float = 0.5) -> Optional[List[Dict]]:
+        return await asyncio.get_event_loop().run_in_executor(None, self.receive_responses, end_delay)
+
+class GameSpyTCPClient:
+    def __init__(self, host: str, port: int, timeout: float = 5.0):
+        self.host, self.port, self.timeout = host, port, timeout
+        self.socket = None
+    async def connect(self):
+        def _conn():
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.settimeout(self.timeout)
+            self.socket.connect((self.host, self.port))
+        await asyncio.get_event_loop().run_in_executor(None, _conn)
+    async def request(self, data: bytes) -> bytes:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, self.socket.sendall, data)
+        response = b''
+        while True:
+            try:
+                chunk = await asyncio.wait_for(loop.run_in_executor(None, self.socket.recv, 4096), timeout=1.0)
+                if not chunk: break
+                response += chunk
+            except asyncio.TimeoutError: break
+        return response
+    def close(self):
+        if self.socket: self.socket.close()
+
+def _encode_master_server_request(game: str, validation_key: str) -> bytes:
+    def cstring(s: str) -> List[int]: return [ord(c) for c in s] + [0]
+    data = [0, 0, 0] + [1, 3, 0, 0, 0, 0] + cstring(game) + cstring(game) + cstring(validation_key) + [0]*5
+    data[1] = len(data)
+    return bytes(data)
+
+def _decode_master_server_response(data: bytes) -> Optional[Dict]:
+    if len(data) < GAMESPY_IP_PORT_LENGTH: return None
+    scanner = 0
+    request_ip = '.'.join(str(b) for b in data[scanner:scanner+4])
+    common_port = (data[scanner+4] << 8) | data[scanner+5]
+    scanner += GAMESPY_IP_PORT_LENGTH
+    if common_port == 0xFFFF: return None
+    def extract_pascal_string(offset: int):
+        if offset >= len(data): return "", offset
+        size = data[offset]
+        return data[offset+1:offset+1+size].decode('ascii', errors='ignore'), offset + size + 1
+    _, scanner = extract_pascal_string(scanner)
+    _, scanner = extract_pascal_string(scanner)
+    servers = []
+    while scanner < len(data):
+        flag = data[scanner]
+        scanner += 1
+        extra_len = sum([3 if flag & GameSpyFlags.A else 0, 4 if flag & GameSpyFlags.B else 0, 2 if flag & GameSpyFlags.C else 0, 2 if flag & GameSpyFlags.D else 0])
+        if scanner + GAMESPY_IP_PORT_LENGTH > len(data): break
+        ip = '.'.join(str(b) for b in data[scanner:scanner+4])
+        port = (data[scanner+4] << 8) | data[scanner+5]
+        scanner += GAMESPY_IP_PORT_LENGTH + extra_len - 1
+        if flag == 0 and ip == "255.255.255.255": break
+        servers.append(GameSpyServerAddress(address=ip, port=port))
+    return {'request_ip': request_ip, 'servers': servers}
+
+async def _get_gamespy_master_server_list(game, host="hosthpc.com", port=28910, timeout=5.0):
+    game_map = {'halom':'HALOM','halor':'HALOR','halod':'HALOD','halomac':'HALOMAC','halomacd':'HALOMACD','halo':'HALO'}
+    game_enum = game_map.get(game.lower())
+    if not game_enum: return []
+    client = GameSpyTCPClient(host, port, timeout)
+    try:
+        await client.connect()
+        vkey = _make_validation_key()
+        encrypted = await client.request(_encode_master_server_request(game, vkey))
+        decrypted = _gamespy_decryptx(GameKeys[game_enum].value, vkey, encrypted)
+        decoded = _decode_master_server_response(decrypted) if decrypted else None
+        return decoded['servers'] if decoded else []
+    except: return []
+    finally: client.close()
+
+async def _resolve_gamespy_servers(args, master_host="hosthpc.com", master_port=28910, timeout=5.0):
+    servers = []
+    game_map = {'ce':'halom','pc':'halor','trial':'halod','mac':'halomac','macdemo':'halomacd','beta':'halo'}
+    for arg in args:
+        if isinstance(arg, str):
+            game_key = game_map.get(arg.lower(), arg)
+            s_list = await _get_gamespy_master_server_list(game_key, master_host, master_port, timeout)
+            servers.extend([GameSpyServer(s.address, s.port, arg) for s in s_list])
+        else: servers.append(GameSpyServer(arg.address, arg.port))
+    return servers
+
+async def _query_gamespy_server_info(servers, timeout=2.0):
+    if not servers: return None
+    address_game_map = {f"{s.address}:{s.port}": s.game for s in servers}
+    client = GameSpyUDPClient()
+    try:
+        for s in servers: await client.write(s.address, s.port, '\\')
+        await asyncio.sleep(0.2)
+        responses = await client.read_all(end_delay=timeout)
+        if not responses: return None
+        return [GameSpyServerResponse(r['address'], r['port'], address_game_map.get(f"{r['address']}:{r['port']}"), r['data'].decode('utf-8', errors='ignore')) for r in responses]
+    finally: client.close()
+
+def _clean_gamespy_string(s: str) -> str:
+    result, i = [], 0
+    while i < len(s):
+        c = s[i]
+        if ord(c) < 32 and c not in '\t\n\r': i += 1; continue
+        if c == '^' and i + 1 < len(s) and (s[i+1].isdigit() or s[i+1].islower()): i += 2; continue
+        if c == '\\': result.append('/'); i += 1; continue
+        if 32 <= ord(c) < 127 or ord(c) >= 128: result.append(c)
+        i += 1
+    return ''.join(result)
+
+def _parse_gamespy_server_info(response_str: str) -> Dict[str, Any]:
+    parts = response_str.split('\\')
+    if parts and parts[0] == '': parts = parts[1:]
+    info = {}
+    for i in range(0, len(parts) - 1, 2):
+        key, value = parts[i], _clean_gamespy_string(parts[i+1])
+        if value.isdigit(): value = int(value)
+        elif re.match(r'^\d+\.\d+$', value): value = float(value)
+        info[key] = value
+    return info
+
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -172,7 +473,7 @@ def summarize_server(data: Dict[str, Any]) -> Dict[str, Any]:
     summary = {}
     summary['xuid'] = data.get('xuid') or data.get('XUID') or None
     summary['players'] = { 'filled': data.get('dwFilledPublicSlots'), 'max': data.get('dwMaxPublicSlots') }
-    pp = data.get('properties') or []
+    pp = data.get('pProperties') or []
     decoded = decode_properties(pp)
 
     server_name = decoded.get('server_name', {}).get('value') or decoded.get('prop_0x40008230', {}).get('value') or ''
@@ -323,7 +624,7 @@ async def init_db():
 
     # Halo CE stats table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS halo_ce_stats (
+        CREATE TABLE IF NOT EXISTS haloce_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             player_count INTEGER NOT NULL DEFAULT 0,
             server_count INTEGER NOT NULL DEFAULT 0,
@@ -335,12 +636,12 @@ async def init_db():
 
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_halo_ce_recorded_at 
-        ON halo_ce_stats(recorded_at)
+        ON haloce_stats(recorded_at)
     """)
 
     # Halo PC stats table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS halo_pc_stats (
+        CREATE TABLE IF NOT EXISTS halopc_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             player_count INTEGER NOT NULL DEFAULT 0,
             server_count INTEGER NOT NULL DEFAULT 0,
@@ -352,7 +653,7 @@ async def init_db():
 
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_halo_pc_recorded_at 
-        ON halo_pc_stats(recorded_at)
+        ON halopc_stats(recorded_at)
     """)
 
     # Only check ElDewrito stats for legacy data population
@@ -423,7 +724,7 @@ def save_haloce_stats(player_count: int, server_count: int):
         now = datetime.now(timezone.utc)
         
         cursor.execute("""
-            INSERT INTO halo_ce_stats (player_count, server_count, recorded_at)
+            INSERT INTO haloce_stats (player_count, server_count, recorded_at)
             VALUES (?, ?, ?)
         """, (player_count, server_count, now))
         
@@ -443,7 +744,7 @@ def save_halopc_stats(player_count: int, server_count: int):
         now = datetime.now(timezone.utc)
         
         cursor.execute("""
-            INSERT INTO halo_pc_stats (player_count, server_count, recorded_at)
+            INSERT INTO halopc_stats (player_count, server_count, recorded_at)
             VALUES (?, ?, ?)
         """, (player_count, server_count, now))
         
@@ -529,7 +830,7 @@ def get_haloce_stats_history() -> Dict[str, List[List[int]]]:
                 CAST(strftime('%s', recorded_at) AS INTEGER) * 1000 as timestamp,
                 player_count,
                 server_count
-            FROM halo_ce_stats
+            FROM haloce_stats
             ORDER BY recorded_at ASC
         """)
         
@@ -561,7 +862,7 @@ def get_halopc_stats_history() -> Dict[str, List[List[int]]]:
                 CAST(strftime('%s', recorded_at) AS INTEGER) * 1000 as timestamp,
                 player_count,
                 server_count
-            FROM halo_pc_stats
+            FROM halopc_stats
             ORDER BY recorded_at ASC
         """)
         
@@ -646,7 +947,7 @@ async def update_eldewrito_cache():
 
         # Atomically update global cache
         eldewrito_cache = new_cache
-        logger.info(f"Cache updated. Servers: {len(successful_servers)}, Players: {total_players}")
+        logger.info(f"ElDewrito Cache updated. Servers: {len(successful_servers)}, Players: {total_players}")
 
 async def update_cartographer_cache():
     """Fetch Cartographer server list and update cache with summarized data."""
@@ -670,7 +971,7 @@ async def update_cartographer_cache():
             mapped = []
             ids = []
             for item in raw_list:
-                if isinstance(item, dict) and (item.get('properties') or item.get('server_desc') or item.get('name')):
+                if isinstance(item, dict) and (item.get('pProperties') or item.get('server_desc') or item.get('name')):
                     mapped.append(summarize_server(item))
                 else:
                     ids.append(item)
@@ -724,16 +1025,108 @@ async def update_cartographer_cache():
                 "servers": summarized_servers  # Processed/summarized list
             }
             
-            logger.info(f"Cartographer cache updated. Servers: {total_servers}, Players: {total_players}")
+            logger.info(f"Cartographer Cache updated. Servers: {total_servers}, Players: {total_players}")
             
     except Exception as e:
         logger.error(f"Failed to update Cartographer cache: {e}")
 
 async def update_haloce_cache():
     """Fetch Halo CE server list and update cache with summarized data."""
+    global haloce_cache
+    
+    try:
+        logger.info("Fetching Halo CE server list from master server...")
+        
+        servers = await _resolve_gamespy_servers(['ce'], timeout=5.0)
+        
+        if not servers:
+            logger.warning("No Halo CE servers returned from master server")
+            return
+        
+        logger.info(f"Found {len(servers)} Halo CE servers. Querying for details...")
+        
+        responses = await _query_gamespy_server_info(servers, timeout=2.0)
+
+        server_list = []
+        total_players = 0
+        
+        if responses:
+            for resp in responses:
+                info = _parse_gamespy_server_info(resp.data) if isinstance(resp.data, str) else {}
+                
+                player_count = info.get('numplayers', 0)
+                if isinstance(player_count, int):
+                    total_players += player_count
+                
+                server_list.append({
+                    'address': resp.address,
+                    'port': resp.port,
+                    'game': resp.game,
+                    'info': info
+                })
+        
+        haloce_cache = {
+            "count": {
+                "players": total_players,
+                "servers": len(server_list)
+            },
+            "updatedAt": get_current_http_date(),
+            "servers": server_list
+        }
+        
+        logger.info(f"Halo CE cache updated. Servers: {len(server_list)}, Players: {total_players}")
+        
+    except Exception as e:
+        logger.error(f"Failed to update Halo CE cache: {e}")
 
 async def update_halopc_cache():
     """Fetch Halo PC server list and update cache with summarized data."""
+    global halopc_cache
+    
+    try:
+        logger.info("Fetching Halo PC server list from master server...")
+
+        servers = await _resolve_gamespy_servers(['pc'], timeout=5.0)
+        
+        if not servers:
+            logger.warning("No Halo PC servers returned from master server")
+            return
+        
+        logger.info(f"Found {len(servers)} Halo PC servers. Querying for details...")
+
+        responses = await _query_gamespy_server_info(servers, timeout=2.0)
+
+        server_list = []
+        total_players = 0
+        
+        if responses:
+            for resp in responses:
+                info = _parse_gamespy_server_info(resp.data) if isinstance(resp.data, str) else {}
+                
+                player_count = info.get('numplayers', 0)
+                if isinstance(player_count, int):
+                    total_players += player_count
+                
+                server_list.append({
+                    'address': resp.address,
+                    'port': resp.port,
+                    'game': resp.game,
+                    'info': info
+                })
+
+        halopc_cache = {
+            "count": {
+                "players": total_players,
+                "servers": len(server_list)
+            },
+            "updatedAt": get_current_http_date(),
+            "servers": server_list
+        }
+        
+        logger.info(f"Halo PC cache updated. Servers: {len(server_list)}, Players: {total_players}")
+        
+    except Exception as e:
+        logger.error(f"Failed to update Halo PC cache: {e}")
 
 # --- Helper Functions ---
 
@@ -905,7 +1298,7 @@ async def background_halopc_stats_recorder():
 
 # --- FastAPI Events & Routes ---
 
-@app.lifespan("startup")
+@app.on_event("startup")
 async def startup_event():
     await init_db()
 

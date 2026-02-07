@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('halo_ce_stats', function (Blueprint $table)
+        Schema::create('haloce_stats', function (Blueprint $table)
         {
             $table->id();
             $table->integer('player_count')->default(0);
@@ -20,6 +20,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('halo_ce_stats');
+        Schema::dropIfExists('haloce_stats');
     }
 };
