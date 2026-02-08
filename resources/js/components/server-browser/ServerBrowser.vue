@@ -321,7 +321,12 @@ const haloColumns: ColumnDef<any>[] = [
     {
         accessorKey: 'gametype',
         header: makeSortHeader('Gametype'),
-        cell: ({ row }) => row.original.info?.gametype_name || row.original.info?.gametype || ''
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            const gt = info.gametype_name ?? info.gametype ?? '';
+            if (typeof gt === 'string' && gt.trim().toLowerCase() === 'king') return 'KOTH';
+            return gt || '';
+        }
     },
     {
         accessorKey: 'map',
