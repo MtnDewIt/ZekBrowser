@@ -22,7 +22,7 @@ const servers = ref<ElDewritoServer[]>([]);
 
 const showBrowser = ref(false);
 const browserStatus = ref('Loading...');
-const activeBrowser = ref<'eldewrito' | 'cartographer'>('eldewrito');
+const activeBrowser = ref<'eldewrito' | 'cartographer' | 'haloce' | 'halopc'>('eldewrito');
 
 const statsStatus = ref('Loading...');
 const chartOptions = ref({
@@ -77,14 +77,17 @@ async function fetchZekBrowser()
             {
                 const active = serverBrowser.value && typeof serverBrowser.value.getSelection === 'function' ? serverBrowser.value.getSelection() : null;
 
-                if (active !== 'cartographer') 
+                if (active !== 'cartographer' && active !== 'haloce' && active !== 'halopc') 
                 {
                     updateCounts(data.count);
                 }
             } 
             catch (e) 
             {
-                updateCounts(data.count);
+                // If child ref isn't available yet, respect the parent's reactive `activeBrowser`
+                if (activeBrowser.value !== 'cartographer' && activeBrowser.value !== 'haloce' && activeBrowser.value !== 'halopc') {
+                    updateCounts(data.count);
+                }
             }
 
             const serverArray: object[] = [];
@@ -201,6 +204,16 @@ function fetchStats()
         statsURL = `${props.zekBrowserApi}cartographer/stats`;
     }
 
+    if (activeBrowser.value === 'haloce') 
+    {
+        statsURL = `${props.zekBrowserApi}haloce/stats`;
+    } 
+
+    if (activeBrowser.value === 'halopc') 
+    {
+        statsURL = `${props.zekBrowserApi}halopc/stats`;
+    }
+
     fetch(statsURL)
         .then((response) => response.json())
         .then((data) => 
@@ -236,7 +249,7 @@ function fetchStats()
         });
 }
 
-const REFRESH_INTERVAL = 15000; // 30 seconds
+const REFRESH_INTERVAL = 30000; // 30 seconds
 let refreshTimer: number | null = null;
 
 const isRefreshing = ref(false);
@@ -254,7 +267,7 @@ function handleChildCountsLoading(val: boolean) {
     cartoCountsLoading.value = val;
 }
 
-function handleBrowserChange(browserType: 'eldewrito' | 'cartographer') {
+function handleBrowserChange(browserType: 'eldewrito' | 'cartographer' | 'haloce' | 'halopc') {
     activeBrowser.value = browserType;
     fetchStats();
 }
@@ -305,7 +318,7 @@ onMounted(async () =>
             ? serverBrowser.value.getSelection()
             : null;
 
-        if (sel === 'cartographer' || sel === 'eldewrito') {
+        if (sel === 'cartographer' || sel === 'eldewrito' || sel === 'haloce' || sel === 'halopc') {
             activeBrowser.value = sel;
         }
     } catch (e) { /* ignore */ }

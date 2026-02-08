@@ -4,9 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class ServerStat extends Model
+class HaloPCStat extends Model
 {
-    protected $table = 'server_stats';
+    protected $table = 'halopc_stats';
 
     protected $fillable =
     [

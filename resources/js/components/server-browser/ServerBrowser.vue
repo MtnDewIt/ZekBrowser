@@ -4,9 +4,11 @@ import type { ElDewritoServer } from '@/models/ElDewritoServer';
 import DataTable from '@/components/server-browser/DataTable.vue';
 import ModsCard from '@/components/server-browser/ModsCard.vue';
 import PlayersCard from '@/components/server-browser/PlayersCard.vue';
+import HaloPlayersCard from '@/components/server-browser/HaloPlayersCard.vue';
 import CartographerBrowser from '@/components/server-browser/CartographerBrowser.vue';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { h, ref, defineExpose, watch, onMounted } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 
@@ -24,7 +26,7 @@ const selected = ref('eldewrito');
 onMounted(() => {
     try {
         const v = localStorage.getItem(STORAGE_KEY);
-        if (v === 'cartographer' || v === 'eldewrito') selected.value = v;
+        if (v === 'cartographer' || v === 'eldewrito' || v === 'haloce' || v === 'halopc') selected.value = v;
     } catch (e) {
         // ignore (e.g., unavailable in some environments)
     }
@@ -35,6 +37,9 @@ onMounted(() => {
     // emit initial counts for the active browser
     if (selected.value === 'cartographer') {
         fetchCartoCounts();
+    } else if (selected.value === 'haloce' || selected.value === 'halopc') {
+        // initial load for Halo browsers
+        try { void loadHaloServers(selected.value as 'haloce' | 'halopc'); } catch (e) { }
     } else {
         try {
             const srv = Array.isArray(props.servers) ? props.servers : [];
@@ -53,7 +58,8 @@ watch(selected, (v) => {
     if (v === 'cartographer') {
         fetchCartoCounts();
     } else {
-        // compute counts from parent-provided `props.servers`
+        // For non-Cartographer (ElDewrito / Halo CE) compute counts from
+        // parent-provided `props.servers` for now (no API hookup yet).
         try {
             const srv = Array.isArray(props.servers) ? props.servers : [];
             let players = 0;
@@ -68,7 +74,7 @@ watch(selected, (v) => {
 
 // update elderwrito counts when parent servers prop changes
 watch(() => props.servers, (val) => {
-    if (selected.value === 'eldewrito') {
+    if (selected.value === 'eldewrito' || selected.value === 'haloce' || selected.value === 'halopc') {
         try {
             const srv = Array.isArray(val) ? val : [];
             let players = 0;
@@ -85,10 +91,18 @@ const cartoRef = ref(null as any);
 const currentPlayers = ref<number>(0);
 const currentServers = ref<number>(0);
 
+// Halo CE placeholder search state (UI-only for now)
+const haloSearch = ref('');
+const haloSearchMode = ref('all');
+const haloSearchOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Server Name', value: 'name' },
+];
+
 const emit = defineEmits<{
     (e: 'counts', payload: { players: number; servers: number }): void,
     (e: 'counts-loading', val: boolean): void,
-    (e: 'browser-change', browserType: 'eldewrito' | 'cartographer'): void,
+    (e: 'browser-change', browserType: 'eldewrito' | 'cartographer' | 'haloce' | 'halopc'): void,
 }>();
 
 async function fetchCartoCounts() {
@@ -122,6 +136,10 @@ async function refresh() {
     if (selected.value === 'cartographer' && cartoRef.value && typeof cartoRef.value.load === 'function') {
         await cartoRef.value.load();
         await fetchCartoCounts();
+        return true;
+    }
+    if (selected.value === 'haloce' || selected.value === 'halopc') {
+        await loadHaloServers(selected.value as 'haloce' | 'halopc');
         return true;
     }
     return false;
@@ -188,7 +206,7 @@ const columns: ColumnDef<ElDewritoServer>[] =
     },
     {
         accessorKey: 'name',
-        header: makeSortHeader('Name'),
+        header: makeSortHeader('Server'),
         cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, 
         [
             h('span', { class: 'font-bold!' }, row.getValue('name')),
@@ -285,6 +303,115 @@ const columns: ColumnDef<ElDewritoServer>[] =
     },
 ]
 
+// Columns for Halo CE / Halo PC server lists (gamespy-style)
+const haloColumns: ColumnDef<any>[] = [
+    {
+        accessorKey: 'name',
+        header: makeSortHeader('Server'),
+        cell: ({ row }) => row.getValue('name') || row.original.info?.server_name || row.original.info?.hostname || ''
+    },
+    {
+        accessorKey: 'map',
+        header: makeSortHeader('Map'),
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            return info.mapname || info.map_name || info.map_name_2 || info.map || '';
+        }
+    },
+    {
+        accessorKey: 'gametype',
+        header: makeSortHeader('Gametype'),
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            const gt = info.gametype_name ?? info.gametype ?? '';
+            if (typeof gt === 'string' && gt.trim().toLowerCase() === 'king') return 'KOTH';
+            return gt || '';
+        }
+    },
+    {
+        accessorKey: 'variant',
+        header: makeSortHeader('Variant'),
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            return info.gamevariant || info.game_variant || info.variant || info.variant_name || info.gamevariant || '';
+        }
+    },
+    {
+        id: 'players',
+        header: makeSortHeader('Players'),
+        // accessor returns a numeric value so sorting works correctly
+        accessorFn: (row) => Number(row.info?.numplayers ?? row.players ?? 0),
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            const filled = Number(info.numplayers ?? row.original.players ?? 0);
+            const max = Number(info.maxplayers ?? 0);
+            return h(HaloPlayersCard, {
+                numPlayers: filled,
+                maxPlayers: max,
+                info: info,
+            });
+        }
+    },
+    {
+        id: 'ipport',
+        header: makeSortHeader('IP:Port', 'text-left'),
+        cell: ({ row }) => {
+            const ip = row.original.address || row.original.ip || row.original.ipaddr || '';
+            const port = row.original.port || row.original.info?.port || '';
+            return h('span', { class: 'inline-flex items-center whitespace-nowrap' }, [`${ip}:${port}`]);
+        }
+    },
+];
+
+const haloServers = ref<any[]>([]);
+const haloLoading = ref(false);
+
+async function loadHaloServers(browserType: 'haloce' | 'halopc') {
+    emit('counts-loading', true);
+    haloLoading.value = true;
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch(`/api/${browserType}/list`, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error('Network');
+        const data = await res.json();
+
+        const list = Array.isArray(data.servers) ? data.servers : (data.servers || []);
+
+        // Map to simplified objects for the DataTable
+        haloServers.value = list.map((s: any) => ({
+            address: s.address || s.ip || s.host || '',
+            port: s.port || (s.info && s.info.port) || '',
+            info: s.info || {},
+            players: s.info?.numplayers || s.players || 0,
+            name: s.info?.hostname || s.info?.server_name || '',
+            variant: s.info?.gamevariant || s.info?.game_variant || s.info?.variant || '',
+            gametype: s.info?.gametype || s.info?.gametype_name || '',
+            map: s.info?.mapname || s.info?.map_name || s.info?.map || '',
+        }));
+
+        // Emit counts if available
+        if (data.count) {
+            currentPlayers.value = Number(data.count.players || 0);
+            currentServers.value = Number(data.count.servers || haloServers.value.length);
+            emit('counts', { players: currentPlayers.value, servers: currentServers.value });
+        }
+    } catch (e) {
+        // ignore
+    } finally {
+        haloLoading.value = false;
+        emit('counts-loading', false);
+    }
+}
+
+// Load halo servers when selection changes to haloce/halopc
+watch(selected, (v) => {
+    if (v === 'haloce' || v === 'halopc') {
+        void loadHaloServers(v as 'haloce' | 'halopc');
+    }
+});
+
 </script>
 
 <template>
@@ -298,9 +425,12 @@ const columns: ColumnDef<ElDewritoServer>[] =
                         <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
                             { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
                         ]" :full-width-trigger="true">
                             <template #trigger-content>
                                 <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
                                 <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
                             </template>
                         </Select>
@@ -308,6 +438,34 @@ const columns: ColumnDef<ElDewritoServer>[] =
                 </template>
             </DataTable>
         </div>
+
+        <div v-else-if="selected === 'haloce' || selected === 'halopc'">
+            <DataTable :columns="haloColumns" :data="haloServers" :players="currentPlayers" :servers="currentServers" :initial-sorting="[{ id: 'players', desc: true }]" :searchOptions="[
+                { label: 'All', value: 'all' },
+                { label: 'Server', value: 'name' },
+                { label: 'Variant', value: 'variant' },
+                { label: 'Gametype', value: 'gametype' },
+                { label: 'Map', value: 'map' },
+            ]">
+                <template #left>
+                    <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background">
+                        <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
+                            { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                            { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        ]" :full-width-trigger="true">
+                            <template #trigger-content>
+                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                            </template>
+                        </Select>
+                    </div>
+                </template>
+            </DataTable>
+        </div>
+
         <div v-else>
             <CartographerBrowser ref="cartoRef">
                 <template #left>
@@ -315,9 +473,12 @@ const columns: ColumnDef<ElDewritoServer>[] =
                         <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
                             { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
                             { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
                         ]" :full-width-trigger="true">
                             <template #trigger-content>
                                 <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
+                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
                                 <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
                             </template>
                         </Select>
