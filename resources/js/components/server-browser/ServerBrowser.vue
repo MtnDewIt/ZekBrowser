@@ -311,23 +311,6 @@ const haloColumns: ColumnDef<any>[] = [
         cell: ({ row }) => row.getValue('name') || row.original.info?.server_name || row.original.info?.hostname || ''
     },
     {
-        id: 'players',
-        header: makeSortHeader('Players'),
-        // accessor returns a numeric value so sorting works correctly
-        accessorFn: (row) => Number(row.info?.numplayers ?? row.players ?? 0),
-        cell: ({ row }) => {
-            const info = row.original.info || {};
-            const filled = Number(info.numplayers ?? row.original.players ?? 0);
-            const max = Number(info.maxplayers ?? 0);
-            return h(HaloPlayersCard, {
-                numPlayers: filled,
-                maxPlayers: max,
-                info: info,
-            });
-        }
-    },
-    
-    {
         accessorKey: 'variant',
         header: makeSortHeader('GameVariant'),
         cell: ({ row }) => {
@@ -346,6 +329,22 @@ const haloColumns: ColumnDef<any>[] = [
         cell: ({ row }) => {
             const info = row.original.info || {};
             return info.mapname || info.map_name || info.map_name_2 || info.map || '';
+        }
+    },
+    {
+        id: 'players',
+        header: makeSortHeader('Players'),
+        // accessor returns a numeric value so sorting works correctly
+        accessorFn: (row) => Number(row.info?.numplayers ?? row.players ?? 0),
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            const filled = Number(info.numplayers ?? row.original.players ?? 0);
+            const max = Number(info.maxplayers ?? 0);
+            return h(HaloPlayersCard, {
+                numPlayers: filled,
+                maxPlayers: max,
+                info: info,
+            });
         }
     },
     {
