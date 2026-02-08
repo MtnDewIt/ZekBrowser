@@ -52,7 +52,7 @@ const globalFilter = ref('')
 const searchMode = ref<string>(props.initialSearchMode ?? 'all')
 const defaultSearchOptions = [
     { label: 'All', value: 'all' },
-    { label: 'Server Name', value: 'name' },
+    { label: 'Server', value: 'name' },
     { label: 'Host', value: 'host' },
     { label: 'Mods', value: 'mods' },
 ]

@@ -206,7 +206,7 @@ const columns: ColumnDef<ElDewritoServer>[] =
     },
     {
         accessorKey: 'name',
-        header: makeSortHeader('Name'),
+        header: makeSortHeader('Server'),
         cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, 
         [
             h('span', { class: 'font-bold!' }, row.getValue('name')),
@@ -307,7 +307,7 @@ const columns: ColumnDef<ElDewritoServer>[] =
 const haloColumns: ColumnDef<any>[] = [
     {
         accessorKey: 'name',
-        header: makeSortHeader('Hostname'),
+        header: makeSortHeader('Server'),
         cell: ({ row }) => row.getValue('name') || row.original.info?.server_name || row.original.info?.hostname || ''
     },
     {
@@ -319,14 +319,6 @@ const haloColumns: ColumnDef<any>[] = [
         }
     },
     {
-        accessorKey: 'variant',
-        header: makeSortHeader('GameVariant'),
-        cell: ({ row }) => {
-            const info = row.original.info || {};
-            return info.gamevariant || info.game_variant || info.variant || info.variant_name || info.gamevariant || '';
-        }
-    },
-    {
         accessorKey: 'gametype',
         header: makeSortHeader('Gametype'),
         cell: ({ row }) => {
@@ -334,6 +326,14 @@ const haloColumns: ColumnDef<any>[] = [
             const gt = info.gametype_name ?? info.gametype ?? '';
             if (typeof gt === 'string' && gt.trim().toLowerCase() === 'king') return 'KOTH';
             return gt || '';
+        }
+    },
+    {
+        accessorKey: 'variant',
+        header: makeSortHeader('Variant'),
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            return info.gamevariant || info.game_variant || info.variant || info.variant_name || info.gamevariant || '';
         }
     },
     {
@@ -442,8 +442,8 @@ watch(selected, (v) => {
         <div v-else-if="selected === 'haloce' || selected === 'halopc'">
             <DataTable :columns="haloColumns" :data="haloServers" :players="currentPlayers" :servers="currentServers" :initial-sorting="[{ id: 'players', desc: true }]" :searchOptions="[
                 { label: 'All', value: 'all' },
-                { label: 'Hostname', value: 'name' },
-                { label: 'GameVariant', value: 'variant' },
+                { label: 'Server', value: 'name' },
+                { label: 'Variant', value: 'variant' },
                 { label: 'Gametype', value: 'gametype' },
                 { label: 'Map', value: 'map' },
             ]">
