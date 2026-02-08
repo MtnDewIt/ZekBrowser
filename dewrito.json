@@ -30,6 +30,9 @@
         },
         {
             "list": "http://icebox.mx.mt/list"
+        },
+        {
+            "list": "http://master.zgaf.io/list"
         }
     ]
 }
