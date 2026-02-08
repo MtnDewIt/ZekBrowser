@@ -138,6 +138,10 @@ async function refresh() {
         await fetchCartoCounts();
         return true;
     }
+    if (selected.value === 'haloce' || selected.value === 'halopc') {
+        await loadHaloServers(selected.value as 'haloce' | 'halopc');
+        return true;
+    }
     return false;
 }
 

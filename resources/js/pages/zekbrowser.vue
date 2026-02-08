@@ -249,7 +249,7 @@ function fetchStats()
         });
 }
 
-const REFRESH_INTERVAL = 15000; // 30 seconds
+const REFRESH_INTERVAL = 30000; // 30 seconds
 let refreshTimer: number | null = null;
 
 const isRefreshing = ref(false);
