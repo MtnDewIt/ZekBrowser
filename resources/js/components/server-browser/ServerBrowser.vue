@@ -311,6 +311,14 @@ const haloColumns: ColumnDef<any>[] = [
         cell: ({ row }) => row.getValue('name') || row.original.info?.server_name || row.original.info?.hostname || ''
     },
     {
+        accessorKey: 'map',
+        header: makeSortHeader('Map'),
+        cell: ({ row }) => {
+            const info = row.original.info || {};
+            return info.mapname || info.map_name || info.map_name_2 || info.map || '';
+        }
+    },
+    {
         accessorKey: 'variant',
         header: makeSortHeader('GameVariant'),
         cell: ({ row }) => {
@@ -326,14 +334,6 @@ const haloColumns: ColumnDef<any>[] = [
             const gt = info.gametype_name ?? info.gametype ?? '';
             if (typeof gt === 'string' && gt.trim().toLowerCase() === 'king') return 'KOTH';
             return gt || '';
-        }
-    },
-    {
-        accessorKey: 'map',
-        header: makeSortHeader('Map'),
-        cell: ({ row }) => {
-            const info = row.original.info || {};
-            return info.mapname || info.map_name || info.map_name_2 || info.map || '';
         }
     },
     {
