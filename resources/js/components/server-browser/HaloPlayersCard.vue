@@ -37,6 +37,63 @@ const TEAM_NAMES =
     'Pink',
 ];
 
+function toNumber(v: any, fallback = 0): number {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function parseTimeToSeconds(v: any): number | null {
+    if (v === undefined || v === null) return null;
+    const s = String(v).trim();
+    const m = s.match(/^(?:(\d+)\s*:)\s*(\d{1,2})$/) || s.match(/^\s*:(\d{1,2})$/);
+    if (m) {
+        if (m.length === 3) {
+            const mins = parseInt(m[1], 10);
+            const secs = parseInt(m[2], 10);
+            if (!Number.isNaN(mins) && !Number.isNaN(secs)) return mins * 60 + secs;
+        } else if (m.length === 2) {
+            const secs = parseInt(m[1], 10);
+            if (!Number.isNaN(secs)) return secs;
+        }
+    }
+
+    // Also try to extract a mm:ss or :ss at the end of the string
+    const search = String(v).match(/(\d+:)?\d{1,2}$/);
+    if (search) {
+        const s2 = search[0];
+        const parts = s2.split(':').map(x => x.trim());
+        if (parts.length === 2) {
+            const mins = parseInt(parts[0], 10);
+            const secs = parseInt(parts[1], 10);
+            if (!Number.isNaN(mins) && !Number.isNaN(secs)) return mins * 60 + secs;
+        } else if (parts.length === 1) {
+            const secs = parseInt(parts[0], 10);
+            if (!Number.isNaN(secs)) return secs;
+        }
+    }
+
+    return null;
+}
+
+function parseScore(info: Record<string, any>, key: string): number {
+    const raw = info[key];
+    if (raw === undefined || raw === null) return 0;
+
+    if (typeof raw === 'number') return toNumber(raw, 0);
+
+    // If the value contains a colon, try to parse as time
+    if (typeof raw === 'string' && raw.indexOf(':') >= 0) {
+        const t = parseTimeToSeconds(raw);
+        if (t !== null) return t;
+    }
+
+    // Try to parse trailing time-like substring, otherwise fall back to numeric
+    const t2 = parseTimeToSeconds(raw);
+    if (t2 !== null) return t2;
+
+    return toNumber(raw, 0);
+}
+
 interface Player {
     name: string;
     score: number;
@@ -60,9 +117,14 @@ const parsedPlayers = computed<Player[]>(() => {
         const name = info[nameKey];
         if (name === undefined || name === null) continue;
 
-        const score = Number(info[scoreKey] ?? 0);
+        const score = parseScore(info, scoreKey);
         const teamRaw = info[teamKey];
-        const team = teamRaw !== undefined && teamRaw !== null ? Number(teamRaw) : null;
+        const team = teamRaw !== undefined && teamRaw !== null
+            ? ((): number | null => {
+                const t = Number(teamRaw);
+                return Number.isFinite(t) ? t : null;
+            })()
+            : null;
 
         players.push({ name: String(name), score, team });
     }
@@ -105,7 +167,7 @@ const groupedPlayers = computed(() => {
         players.sort((a, b) => b.score - a.score);
 
         const teamScore = team !== null && props.info?.[`score_t${team}`] !== undefined
-            ? Number(props.info[`score_t${team}`])
+            ? toNumber(props.info[`score_t${team}`], 0)
             : players.reduce((acc, p) => acc + p.score, 0);
 
         arr.push({ team, players, teamScore });
