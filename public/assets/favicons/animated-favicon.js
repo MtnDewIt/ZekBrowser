@@ -4,21 +4,7 @@
    The Python extraction script `scripts/extract_favicon_frames.py` will create it.
 */
 (function(){
-  function isChromium() {
-    try {
-      // Prefer userAgentData when available
-      if (navigator.userAgentData && Array.isArray(navigator.userAgentData.brands)) {
-        return navigator.userAgentData.brands.some(b => /chrom/i.test(b.brand));
-      }
-      const ua = navigator.userAgent || '';
-      return /Chrome|Chromium|CriOS|Edg|OPR|Brave/i.test(ua);
-    } catch (e) {
-      return false;
-    }
-  }
-
   async function init(){
-    if (!isChromium()) return; // only run in Chromium-based browsers
     try{
       const res = await fetch('/assets/favicons/frames-list.json', {cache: 'no-store'});
       if(!res.ok) return;
