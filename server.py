@@ -516,6 +516,21 @@ def summarize_server(data: Dict[str, Any]) -> Dict[str, Any]:
     summary['variant'] = variant_display
     summary['description'] = description
     summary['decoded_properties'] = decoded
+    # Preserve some raw top-level Cartographer fields that are not part
+    # of the property list but are present in the upstream JSON.
+    # These are useful for debugging/network info (saddr, abenet, abonline, xnaddr).
+    try:
+        if 'saddr' in data:
+            summary['saddr'] = data.get('saddr')
+        if 'abenet' in data:
+            summary['abenet'] = data.get('abenet')
+        if 'abonline' in data:
+            summary['abonline'] = data.get('abonline')
+        if 'xnaddr' in data:
+            summary['xnaddr'] = data.get('xnaddr')
+    except Exception:
+        # don't fail summarization if unexpected types are present
+        pass
     return summary
 
 async def fetch_cartographer_server_details(client: httpx.AsyncClient, server_id: Any) -> Optional[Dict[str, Any]]:
@@ -524,7 +539,18 @@ async def fetch_cartographer_server_details(client: httpx.AsyncClient, server_id
     try:
         r = await client.get(url, timeout=15.0)
         r.raise_for_status()
-        return summarize_server(r.json())
+        json_data = r.json()
+        summary = summarize_server(json_data)
+        # Preserve the original upstream payload for debugging and inspection
+        try:
+            summary['_raw_cartographer'] = json_data
+        except Exception:
+            pass
+        if summary:
+            return summary
+        # Remote returned an empty/null payload — return a consistent failure object
+        logger.warning(f"Cartographer server {server_id} returned empty data")
+        return {'xuid': server_id, 'server_name': '', 'map_name': '', 'gametype': '', 'variant': '', 'description': '<failed>'}
     except Exception as e:
         logger.warning(f"Failed to fetch Cartographer server {server_id}: {e}")
         return {'xuid': server_id, 'server_name': '', 'map_name': '', 'gametype': '', 'variant': '', 'description': '<failed>'}
