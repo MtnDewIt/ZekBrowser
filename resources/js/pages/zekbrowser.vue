@@ -4,7 +4,6 @@ import ThemeToggle from '@/components/ThemeToggle.vue';
 import { ValidationError } from '@/exceptions/ValidationError';
 import { ElDewritoServer } from '@/models/ElDewritoServer';
 import { Head } from '@inertiajs/vue3';
-import 'bulma/css/bulma.min.css';
 import 'highcharts/css/highcharts.css';
 import { Chart } from 'highcharts-vue';
 import { onMounted, onUnmounted, ref } from 'vue';
@@ -358,15 +357,14 @@ onUnmounted(() =>
         />
     </Head>
 
-    <section class="section">
-        <div class="container-flex">
-            <div class="container-flex-flex">
-                <div class="header-container">
-                    <div class="header-left">
-                        <h1 class="title is-2">ZekBrowser</h1>
-                        <p class="subtitle is-spaced"></p>
+    <section class="px-4 py-6 sm:px-6 lg:px-8">
+        <div class="mx-auto flex flex-col items-center">
+            <div class="flex flex-col w-full max-w-[1400px]">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex flex-col">
+                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">ZekBrowser</h1>
                     </div>
-                    <div class="header-right">
+                    <div class="flex items-center gap-2 relative z-30">
                         <button
                             @click="handleRefresh"
                             class="refresh-button"
@@ -385,92 +383,45 @@ onUnmounted(() =>
             
                 <ServerBrowser ref="serverBrowser" v-if="showBrowser" :servers="servers" @counts="handleChildCounts" @counts-loading="handleChildCountsLoading" @browser-change="handleBrowserChange" />
             
-                <div class="header-container-stats">
-                    <h2 class="title is-3">Stats</h2>
-                    <p class="subtitle">{{ statsStatus }}</p>
+                <div class="flex items-center justify-between mt-8 mb-4">
+                    <h2 class="text-xl font-semibold tracking-tight text-foreground">Stats</h2>
+                    <p v-if="statsStatus" class="text-sm text-muted-foreground">{{ statsStatus }}</p>
                 </div>
             
-                <Chart v-if="chartOptions.series" :options="chartOptions"></Chart>
+                <div v-if="chartOptions.series" class="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+                    <Chart :options="chartOptions"></Chart>
+                </div>
             </div>
         </div>
     </section>
 </template>
 
 <style scoped>
-.container-flex 
-{
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.container-flex-flex 
-{
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: left;
-
-    /*TODO: Maybe add better handling for weird resolutions*/
-    width: min(100%, calc(100vh * 16 / 9));
-}
-
-.header-container 
-{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.header-container-stats 
-{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 2.25rem;
-    margin-bottom: 1rem;
-}
-
-.header-left 
-{
-    display: flex;
-    flex-direction: column;
-}
-
-.header-right 
-{
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    /* ensure header actions sit above translated search-row so they're clickable */
-    position: relative;
-    z-index: 30;
-}
-
 .refresh-button 
 {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 4px;
-    border-radius: 6px;
+    padding: 6px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: all 0.15s ease;
     height: 36px;
     width: 36px;
+    color: var(--muted-foreground);
 }
 
 .refresh-button:hover 
 {
-    background-color: rgba(0, 0, 0, 0.08);
+    background-color: var(--muted);
+    color: var(--foreground);
 }
 
 .refresh-button:active 
 {
-    transform: scale(0.95);
+    transform: scale(0.93);
 }
 
 .icon-mask 
@@ -491,35 +442,12 @@ onUnmounted(() =>
 
 .animate-spin 
 {
-    animation: spin 1s linear infinite;
-}
-
-:deep(.header-right .theme-toggle) {
-    height: 36px;
-    width: 36px;
+    animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin 
 {
-    from 
-    {
-        transform: rotate(0deg);
-    }
-    to 
-    {
-        transform: rotate(360deg);
-    }
-}
-</style>
-
-<style>
-:root 
-{
-    --background: var(--bulma-body-background-color);
-}
-
-.dark 
-{
-    background-color: var(--background);
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 </style>

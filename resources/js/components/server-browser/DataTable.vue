@@ -26,6 +26,7 @@ from '@/components/ui/table';
 
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+
 import { valueUpdater } from '@/lib/utils';
 import { ref } from 'vue';
 
@@ -143,14 +144,14 @@ const table = useVueTable({
 
 <template>
 
-    <div class="flex items-center justify-center gap-4 py-4" style="transform: translateY(-56px);">
+    <div class="flex items-center justify-center gap-3 pb-4">
         <div class="flex-shrink-0">
             <slot name="left" />
         </div>
 
-        <div class="relative w-full max-w-sm">
+        <div class="relative flex-1 min-w-0 max-w-sm">
             <Input 
-                class="rounded-md pr-10" 
+                class="rounded-lg pr-10 bg-muted/40 border-border/60 focus:bg-background transition-colors" 
                 :placeholder="searchMode === 'all' ? 'Search servers...' : `Search by ${searchMode}...`"
                 :model-value="globalFilter"
                 @update:model-value="globalFilter = $event" 
@@ -160,56 +161,62 @@ const table = useVueTable({
             </div>
         </div>
 
-        <div class="ml-3 flex items-center gap-3 text-sm text-muted-foreground min-w-[160px] justify-end">
-            <div class="flex items-center gap-1">
-                <span class="font-semibold tabular-nums">{{ props.players ?? '—' }}</span>
-                <span class="opacity-80">Players</span>
+        <div class="ml-auto flex items-center gap-4 text-sm min-w-[160px] justify-end">
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50">
+                <span class="font-semibold tabular-nums text-foreground">{{ props.players ?? '—' }}</span>
+                <span class="text-muted-foreground text-xs">Players</span>
             </div>
-            <div class="flex items-center gap-1">
-                <span class="font-semibold tabular-nums">{{ props.servers ?? '—' }}</span>
-                <span class="opacity-80">Servers</span>
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50">
+                <span class="font-semibold tabular-nums text-foreground">{{ props.servers ?? '—' }}</span>
+                <span class="text-muted-foreground text-xs">Servers</span>
             </div>
         </div>
     </div>
 
-    <Table class="text-md">
-        <TableHeader class="border-b-2">
-            <TableRow
-                v-for="headerGroup in table.getHeaderGroups()"
-                :key="headerGroup.id"
-                class="hover:bg-transparent"
-            >
-                <TableHead
-                    v-for="header in headerGroup.headers"
-                    :key="header.id"
-                >
-                    <FlexRender
-                        v-if="!header.isPlaceholder" :render="header.column.columnDef.header"
-                        :props="header.getContext()"
-                        class="font-bold p-0 text-muted-foreground! hover:text-foreground!"
-                    />
-                </TableHead>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-            <template v-if="table.getRowModel().rows?.length">
+    <div class="rounded-xl border border-border/60 bg-card shadow-sm">
+        <Table class="text-sm">
+            <TableHeader>
                 <TableRow
-                    v-for="row in table.getRowModel().rows" :key="row.id"
-                    :data-state="row.getIsSelected() ? 'selected' : undefined"
-                    class="hover:text-foreground hover:bg-transparent"
+                    v-for="headerGroup in table.getHeaderGroups()"
+                    :key="headerGroup.id"
+                    class="hover:bg-transparent border-b border-border/80 bg-muted/30"
                 >
-                    <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
-                        <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" class="text-wrap" />
-                    </TableCell>
+                    <TableHead
+                        v-for="header in headerGroup.headers"
+                        :key="header.id"
+                        class="text-xs uppercase tracking-wide"
+                    >
+                        <FlexRender
+                            v-if="!header.isPlaceholder" :render="header.column.columnDef.header"
+                            :props="header.getContext()"
+                            class="font-semibold p-0 text-muted-foreground! hover:text-foreground!"
+                        />
+                    </TableHead>
                 </TableRow>
-            </template>
-            <template v-else>
-                <TableRow>
-                    <TableCell :colspan="columns.length" class="h-24 text-center">
-                        No servers.
-                    </TableCell>
-                </TableRow>
-            </template>
-        </TableBody>
-    </Table>
+            </TableHeader>
+            <TableBody>
+                <template v-if="table.getRowModel().rows?.length">
+                    <TableRow
+                        v-for="(row, idx) in table.getRowModel().rows" :key="row.id"
+                        :data-state="row.getIsSelected() ? 'selected' : undefined"
+                        :class="[
+                            'transition-colors duration-100 hover:bg-muted/40',
+                            idx % 2 === 1 ? 'bg-muted/15' : '',
+                        ]"
+                    >
+                        <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
+                            <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" class="text-wrap" />
+                        </TableCell>
+                    </TableRow>
+                </template>
+                <template v-else>
+                    <TableRow>
+                        <TableCell :colspan="columns.length" class="h-24 text-center text-muted-foreground">
+                            No servers.
+                        </TableCell>
+                    </TableRow>
+                </template>
+            </TableBody>
+        </Table>
+    </div>
 </template>

@@ -39,7 +39,9 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) =>
 
   return h(Button,
     {
-      class: ['gap-0', buttonClass].filter(Boolean).join(' '),
+      variant: 'ghost',
+      class: ['gap-1', buttonClass].filter(Boolean).join(' '),
+      style: 'padding-left: 1.25rem; padding-right: 1.25rem; margin-left: -0.5rem;',
       onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
     },
     () => [label, renderSortIcon(state)]
@@ -48,6 +50,28 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) =>
 
 const columns: ColumnDef<CartoServer>[] = 
 [
+  {
+    accessorKey: 'xuid',
+    header: makeSortHeader('XUID'),
+    cell: ({ row }) => {
+      const val = row.getValue('xuid');
+      if (val === null || typeof val === 'undefined' || String(val).trim() === '') {
+        return h('span', { class: 'tabular-nums text-sm' }, '—');
+      }
+
+      // Use the Laravel proxy route (plural 'servers') so the same-origin
+      // frontend served from port 8000 can access it without CORS issues.
+      const url = `/api/cartographer/servers/${encodeURIComponent(String(val))}`;
+
+      return h('a', {
+        href: url,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        title: 'View JSON data',
+        class: 'tabular-nums text-sm text-link hover:underline'
+      }, String(val));
+    }
+  },
   { 
     accessorKey: 'server_name', 
     header: makeSortHeader('Server'), 
@@ -88,6 +112,7 @@ const columns: ColumnDef<CartoServer>[] =
 
       return h(Button,
         {
+          variant: 'ghost',
           class: 'gap-0',
           onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
           title: 'Custom Map',
@@ -272,6 +297,5 @@ defineExpose({ load });
 </template>
 
 <style scoped>
-.carto-browser .btn { padding: 0.25rem 0.5rem; border-radius: 0.25rem; background: #efefef }
-.odd\:bg-surface:nth-child(odd) { background: #fbfbfb }
+/* minimal overrides – styling now comes from DataTable card wrapper */
 </style>

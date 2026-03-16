@@ -7,7 +7,6 @@ import ClickPopover from '@/components/ui/click-popover/ClickPopover.vue';
 import { ref } from 'vue';
 
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import '../../../css/ModsCard.css';
 
 interface Props 
@@ -60,51 +59,47 @@ const size = (bytes) =>
                     </button>
                 </template>
             </template>
-            <div class="w-90 p-0 bg-background/100 dark:bg-background/100 backdrop-blur-xs">
-            <ScrollArea class="h-64 w-full">
-                <div class="p-4 mods-card">
-                    <h4 class="mb-4 text-foreground has-text-weight-semibold">
-                        Mod Packs
-                    </h4>
-
-                    <div v-for="mod in mods" :key="mod.id" class="mod-entry">
-                        <div class="flex justify-between text-sm items-center">
-                            <div>
-                                <div class="flex items-baseline gap-2">
-                                    <span class="font-medium mod-name">{{ mod.mod_name }}</span>
-                                    <span v-if="mod.mod_version" class="mod-version">v{{ mod.mod_version }}</span>
+            <div class="w-96 rounded-xl border border-border/60 bg-card shadow-lg overflow-hidden">
+            <div class="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <Package :size="15" class="text-muted-foreground" />
+                    <h4 class="text-sm font-semibold text-foreground">Mod Packs</h4>
+                </div>
+                <span class="text-[11px] text-muted-foreground tabular-nums">{{ mods.length }} mod{{ mods.length > 1 ? 's' : '' }} &middot; {{ size(total) }}</span>
+            </div>
+            <ScrollArea class="h-72 w-full">
+                <div class="py-1.5 mods-card">
+                    <div v-for="(mod, idx) in mods" :key="mod.id" class="mod-entry">
+                        <div class="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium text-[13px] text-foreground truncate">{{ mod.mod_name }}</span>
+                                    <span v-if="mod.mod_version" class="mod-version">{{ mod.mod_version }}</span>
                                 </div>
-
-                                <div v-if="mod.mod_author" class="text-xs opacity-60 mod-author">by {{ mod.mod_author }}</div>
-                                <div v-if="mod.mod_website" class="text-xs mt-1 mod-website">
-                                    <a :href="mod.mod_website" target="_blank" rel="noopener noreferrer" class="text-muted-foreground! hover:underline! truncate block" :title="mod.mod_website">{{ mod.mod_website }}</a>
+                                <div v-if="mod.mod_author" class="text-[11px] text-muted-foreground mt-0.5">{{ mod.mod_author }}</div>
+                                <div v-if="mod.mod_website" class="mt-0.5 max-w-[220px]">
+                                    <a :href="mod.mod_website" target="_blank" rel="noopener noreferrer" class="text-[11px] text-muted-foreground hover:text-foreground hover:underline truncate block transition-colors" :title="mod.mod_website">{{ mod.mod_website }}</a>
                                 </div>
                             </div>
 
-                            <Button
-                                as="a"
-                                size="sm"
+                            <a
                                 :href="mod.package_url"
                                 target="_blank"
-                                variant="outline"
-                                class="min-w-22 flex px-2 text-xs font-normal text-muted-foreground!"
+                                class="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50 hover:bg-muted text-[11px] tabular-nums text-muted-foreground hover:text-foreground transition-colors"
                             >
-                                <Download :size="16"/>
+                                <Download :size="12"/>
                                 {{ size(mod.package_size) }}
-                            </Button>
+                            </a>
                         </div>
-                        <Separator class="my-2" />
-                    </div>
-
-                    <div class="flex justify-between mt-5 text-xs opacity-60">
-                        <p>{{ mods.length}} mod{{ mods.length > 1 ? 's' : '' }}, {{ size(total) }} total</p>
-                        <a v-if="jsonUrl"
-                           :href="jsonUrl"
-                           target="_blank"
-                           class="text-muted-foreground! hover:underline!">JSON</a>
+                        <div v-if="idx < mods.length - 1" class="mx-4 border-b border-border/30"></div>
                     </div>
                 </div>
             </ScrollArea>
+            <div class="px-4 py-2 border-t border-border/40 flex justify-end">
+                <a v-if="jsonUrl" :href="jsonUrl"
+                   target="_blank"
+                   class="text-[11px] text-muted-foreground hover:text-foreground hover:underline transition-colors">View JSON</a>
+            </div>
             </div>
         </ClickPopover>
 </template>

@@ -86,7 +86,7 @@ watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
       :class="[
         props.iconOnly
           ? 'h-8 w-8 p-0 rounded-md bg-transparent border-0 flex items-center justify-center focus:outline-none focus:ring-0'
-          : 'h-10 min-w-[8rem] px-3 rounded-md border border-input bg-background text-foreground text-sm relative flex items-center focus:outline-none focus:ring-0',
+          : 'h-10 min-w-[8rem] px-3 rounded-lg border border-border/60 bg-card text-foreground text-sm relative flex items-center hover:bg-muted/50 transition-colors focus:outline-none focus:ring-0',
         props.fullWidthTrigger ? 'w-full justify-between' : ''
       ]"
       @click="toggle"
@@ -103,8 +103,8 @@ watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
     </button>
 
     <teleport to="body">
-      <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-0 max-h-80 overflow-auto rounded-md border border-input bg-background text-foreground shadow-lg">
-        <li v-for="opt in options" :key="opt.value" @click.stop="select(opt.value)" class="px-3 py-2 cursor-pointer hover:bg-muted/60 hover:text-foreground active:bg-transparent focus:outline-none flex items-center">
+      <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-1 max-h-80 overflow-auto rounded-lg border border-border/60 bg-card text-foreground shadow-lg ring-1 ring-black/5 dark:ring-white/5">
+        <li v-for="opt in options" :key="opt.value" @click.stop="select(opt.value)" class="px-3 py-2 cursor-pointer hover:bg-muted/60 hover:text-foreground active:bg-transparent focus:outline-none flex items-center transition-colors">
           <img v-if="opt.icon" :src="opt.icon" :alt="opt.label" :class="['w-5 h-5 mr-2 object-contain', opt.iconRounded ? 'rounded-full' : '']" />
           <span class="truncate ml-3" style="transform: translate(-1px, -4px);">{{ opt.label }}</span>
         </li>

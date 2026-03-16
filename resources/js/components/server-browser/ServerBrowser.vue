@@ -159,7 +159,9 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }) =>
 
     return h(Button, 
     {
-        class: ['gap-0', buttonClass].filter(Boolean).join(' '),
+        variant: 'ghost',
+        class: ['gap-1', buttonClass].filter(Boolean).join(' '),
+        style: 'padding-left: 1.25rem; padding-right: 1.25rem; margin-left: -0.5rem;',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
     }, 
     () => [label, renderSortIcon(state)]);
@@ -172,19 +174,22 @@ const columns: ColumnDef<ElDewritoServer>[] =
         accessorFn: (row) => (row.passworded ? 1 : 0),
         header: ({ column }) => 
         {
+            const state = column.getIsSorted();
             const icon = h('span', 
             {
-                class: 'block mx-auto w-5 h-5 leading-none text-muted-foreground relative top-[1px] icon-mask icon-lock',
+                class: 'w-5 h-5 leading-none text-muted-foreground icon-mask icon-lock',
                 ariaHidden: 'true',
             });
 
             return h(Button, 
             {
-                class: 'block mx-auto w-8 h-8 p-0 flex items-center justify-center',
+                variant: 'ghost',
+                class: 'gap-1',
+                style: 'padding-left: 1.25rem; padding-right: 1.25rem; margin-left: -0.5rem;',
                 onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
                 title: 'Sort by password protection',
             }, 
-            () => [icon])
+            () => [icon, renderSortIcon(state)])
         },
         cell: ({ row }) => 
         {
@@ -421,20 +426,18 @@ watch(selected, (v) => {
         <div v-if="selected === 'eldewrito'">
             <DataTable :columns="columns" :data="servers" :players="currentPlayers" :servers="currentServers">
                 <template #left>
-                    <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background">
-                        <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
-                            { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
-                            { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
-                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
-                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
-                        ]" :full-width-trigger="true">
-                            <template #trigger-content>
-                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                                <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                            </template>
-                        </Select>
-                    </div>
+                    <Select v-model="selected" class="min-w-[168px]" :options="[
+                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                    ]" :full-width-trigger="true">
+                        <template #trigger-content>
+                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                        </template>
+                    </Select>
                 </template>
             </DataTable>
         </div>
@@ -448,20 +451,18 @@ watch(selected, (v) => {
                 { label: 'Map', value: 'map' },
             ]">
                 <template #left>
-                    <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background">
-                        <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
-                            { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
-                            { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
-                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
-                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
-                        ]" :full-width-trigger="true">
-                            <template #trigger-content>
-                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                                <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                            </template>
-                        </Select>
-                    </div>
+                    <Select v-model="selected" class="min-w-[168px]" :options="[
+                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                    ]" :full-width-trigger="true">
+                        <template #trigger-content>
+                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                        </template>
+                    </Select>
                 </template>
             </DataTable>
         </div>
@@ -469,20 +470,18 @@ watch(selected, (v) => {
         <div v-else>
             <CartographerBrowser ref="cartoRef">
                 <template #left>
-                    <div class="min-w-[160px] h-10 flex items-center rounded-md border border-input bg-background">
-                        <Select v-model="selected" class="h-full bg-transparent border-0" :options="[
-                            { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
-                            { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
-                            { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
-                            { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
-                        ]" :full-width-trigger="true">
-                            <template #trigger-content>
-                                <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                                <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                                <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-6 h-6 mr-2 object-contain rounded-full" />
-                            </template>
-                        </Select>
-                    </div>
+                    <Select v-model="selected" class="min-w-[168px]" :options="[
+                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
+                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
+                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                    ]" :full-width-trigger="true">
+                        <template #trigger-content>
+                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                        </template>
+                    </Select>
                 </template>
             </CartographerBrowser>
         </div>

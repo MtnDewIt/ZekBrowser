@@ -1,51 +1,18 @@
-.mods-card h4
-{
-    margin-bottom:0.75rem;
-    font-weight:600;
-}
-
 .mods-card .mod-entry
 {
-    padding:0.125rem 0;
-}
-
-.mods-card .mod-name
-{
-    display:inline-block;
-    max-width:100%;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-}
-
-.mods-card .mod-author
-{
-    font-size:0.8125rem;
-    opacity:0.65;
-    margin-top:0.125rem;
+    padding: 0;
 }
 
 .mods-card .mod-version
 {
-    display:inline-block;
-    font-size:0.75rem;
-    opacity:0.5;
-    margin-left:0rem;
-}
-
-.mods-card .mod-website a
-{
-    display:block;
-    font-size:0.8125rem;
-    margin-top:0.25rem;
-    color:var(--muted-foreground, #9ca3af);
-    text-decoration:none;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
-}
-
-.mods-card .mod-website a:hover
-{
-    text-decoration:underline;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--muted-foreground, #9ca3af);
+    padding: 0.1rem 0.4rem;
+    border-radius: 9999px;
+    background: var(--muted, rgba(0,0,0,0.05));
+    line-height: 1.3;
 }

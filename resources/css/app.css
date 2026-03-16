@@ -225,26 +225,77 @@ body[data-scroll-locked]
     }
 }
 
+/* Custom scrollbar */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+html::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+html::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+}
+
 .highcharts-background 
 {
-    fill: #ffffff !important;
+    fill: var(--card) !important;
 }
 
 .highcharts-axis-line,
 .highcharts-tick 
 {
-    stroke: #ccd6eb !important;
+    stroke: var(--border) !important;
 }
 
 .highcharts-axis-title,
 .highcharts-axis-labels text 
 {
-    fill: #666666 !important;
+    fill: var(--muted-foreground) !important;
 }
 
 .highcharts-grid-line 
 {
-    stroke: #e6e6e6 !important;
+    stroke: var(--border) !important;
 }
 
 .highcharts-series-0 
@@ -257,32 +308,15 @@ body[data-scroll-locked]
     stroke: #544fc5 !important;
 }
 
-
-.dark .highcharts-background 
+.highcharts-tooltip-box 
 {
-    fill: #14161a !important;
+    fill: var(--popover) !important;
+    stroke: var(--border) !important;
 }
 
-.dark .highcharts-axis-line,
-.dark .highcharts-tick 
+.highcharts-label text 
 {
-    stroke: #505053 !important;
-}
-
-.dark .highcharts-axis-title,
-.dark .highcharts-axis-labels text 
-{
-    fill: #cccccc !important;
-}
-
-.dark .highcharts-grid-line 
-{
-    stroke: #404043 !important;
-}
-
-.dark .highcharts-series-0 
-{
-    stroke: #2caffe !important;
+    fill: var(--muted-foreground) !important;
 }
 
 .dark .highcharts-series-1 
@@ -290,13 +324,18 @@ body[data-scroll-locked]
     stroke: #00e272 !important;
 }
 
-.dark .highcharts-tooltip-box 
+.highcharts-button rect 
 {
-    fill: #2a2a2b !important;
-    stroke: #505053 !important;
+    fill: var(--secondary) !important;
+    stroke: var(--border) !important;
 }
 
-.dark .highcharts-label text 
+.highcharts-button text 
 {
-    fill: #cccccc !important;
+    fill: var(--foreground) !important;
+}
+
+.highcharts-button:hover rect 
+{
+    fill: var(--muted) !important;
 }
