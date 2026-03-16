@@ -14,48 +14,65 @@ if [ ! -d "$BACKUP_DIR" ]; then
     exit 1
 fi
 
-echo "Available Backups:"
-i=0
-for backup in $(ls -t "$BACKUP_DIR"/backup_*.sqlite); do
-    echo "[$i] $(basename "$backup")"
-    backups="$backups $backup"
-    i=$((i+1))
-done
-
-if [ "$i" -eq 0 ]; then
-    echo "No backups found."
-    exit 1
+AUTO_LATEST=0
+if [ "$1" = "latest" ] || [ "$1" = "--latest" ]; then
+    AUTO_LATEST=1
 fi
 
-printf "Select a backup to restore (0-$((i-1))): "
-read selection
-
-if echo "$selection" | grep -q '^[0-9]\+$' && [ "$selection" -ge 0 ] && [ "$selection" -lt "$i" ]; then
-
-    chosen_backup=""
-    j=0
-    for backup in $backups; do
-        if [ "$j" -eq "$selection" ]; then
-            chosen_backup=$backup
-            break
-        fi
-        j=$((j+1))
-    done
+if [ "$AUTO_LATEST" -eq 1 ]; then
+    chosen_backup=$(ls -t "$BACKUP_DIR"/backup_*.sqlite 2>/dev/null | head -n 1 || true)
     
-    echo "Restoring '$(basename "$chosen_backup")' to '$DB_PATH'..."
-    printf "Are you sure? This will overwrite the current database. (y/n): "
-    read confirm
-    
-    if [ "$confirm" != "y" ]; then
-        echo "Restore cancelled."
-        exit 0
+    if [ -z "$chosen_backup" ]; then
+        echo "No backups found."
+        exit 1
     fi
     
-    cp "$chosen_backup" "$DB_PATH"
-    chown www-data:www-data "$DB_PATH"
-    echo "Restore complete."
-    echo "It is recommended to restart the container."
+    echo "Auto-restoring most recent backup: '$(basename "$chosen_backup")' to '$DB_PATH'..."
 else
-    echo "Invalid selection."
-    exit 1
+    echo "Available Backups:"
+    i=0
+    backups=""
+    for backup in $(ls -t "$BACKUP_DIR"/backup_*.sqlite 2>/dev/null || true); do
+        echo "[$i] $(basename "$backup")"
+        backups="$backups $backup"
+        i=$((i+1))
+    done
+
+    if [ "$i" -eq 0 ]; then
+        echo "No backups found."
+        exit 1
+    fi
+
+    printf "Select a backup to restore (0-$((i-1))): "
+    read selection
+
+    if echo "$selection" | grep -q '^[0-9]\+$' && [ "$selection" -ge 0 ] && [ "$selection" -lt "$i" ]; then
+
+        chosen_backup=""
+        j=0
+        for backup in $backups; do
+            if [ "$j" -eq "$selection" ]; then
+                chosen_backup=$backup
+                break
+            fi
+            j=$((j+1))
+        done
+        
+        echo "Restoring '$(basename "$chosen_backup")' to '$DB_PATH'..."
+        printf "Are you sure? This will overwrite the current database. (y/n): "
+        read confirm
+        
+        if [ "$confirm" != "y" ]; then
+            echo "Restore cancelled."
+            exit 0
+        fi
+    else
+        echo "Invalid selection."
+        exit 1
+    fi
 fi
+
+cp "$chosen_backup" "$DB_PATH"
+chown www-data:www-data "$DB_PATH"
+echo "Restore complete."
+echo "It is recommended to restart the container."
