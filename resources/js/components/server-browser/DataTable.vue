@@ -205,8 +205,8 @@ const table = useVueTable({
                         :data-state="row.getIsSelected() ? 'selected' : undefined"
                         :class="[
                             'transition-colors duration-100 hover:bg-muted/40',
-                            idx % 2 === 1 ? 'bg-muted/15' : '',
                         ]"
+                        :style="idx % 2 === 1 ? { backgroundColor: 'var(--stripe)' } : undefined"
                     >
                         <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
                             <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" class="text-wrap" />
