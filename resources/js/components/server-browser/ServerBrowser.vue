@@ -451,15 +451,7 @@ watch(selected, (v) => {
                                 <span v-if="row.hostPlayer" class="ml-1">· {{ row.hostPlayer }}</span>
                             </div>
                         </div>
-                        <PlayersCard
-                            :numPlayers="row.numPlayers"
-                            :maxPlayers="row.maxPlayers"
-                            :players="row.players"
-                            :teams="row.teams"
-                            :teamScores="row.teamScores"
-                            :serverVersion="row.eldewritoVersionShort ?? row.eldewritoVersion ?? ''"
-                            :passworded="!!row.passworded"
-                        />
+                        <span class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0">{{ row.numPlayers }}/{{ row.maxPlayers }}</span>
                     </div>
                     <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                         <span v-if="row.eldewritoVersion">v{{ row.versionWithoutTrailingZero() }}</span>
