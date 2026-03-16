@@ -455,7 +455,7 @@ watch(selected, (v) => {
                     </div>
                     <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                         <span v-if="row.eldewritoVersion">v{{ row.versionWithoutTrailingZero() }}</span>
-                        <span v-if="row.mods?.length" class="inline-flex items-center cursor-pointer" @click.stop="$event.currentTarget.querySelector('.mods-count-button')?.click()">mods:&nbsp;<ModsCard :mods="row.mods" :jsonUrl="`http://${row.ip}/mods`" :showAsNumber="true" /></span>
+                        <span v-if="row.mods?.length" class="inline-flex items-center cursor-pointer" @click.stop="$event.currentTarget.querySelector('.mods-count-button')?.click()">Mods:&nbsp;<ModsCard :mods="row.mods" :jsonUrl="`http://${row.ip}/mods`" :showAsNumber="true" /></span>
                     </div>
                 </template>
             </DataTable>
