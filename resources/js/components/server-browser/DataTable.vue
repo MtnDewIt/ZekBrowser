@@ -177,13 +177,13 @@ const table = useVueTable({
     </div>
 
     <!-- Desktop: table view -->
-    <div class="hidden md:block rounded-xl border border-border/60 bg-card shadow-sm">
+    <div class="hidden md:block rounded-xl border border-border/80 bg-card shadow-sm">
         <Table class="text-sm">
             <TableHeader>
                 <TableRow
                     v-for="headerGroup in table.getHeaderGroups()"
                     :key="headerGroup.id"
-                    class="hover:bg-transparent border-b border-border/80 bg-muted/30"
+                    class="hover:bg-transparent border-b border-border bg-muted/30"
                 >
                     <TableHead
                         v-for="header in headerGroup.headers"
@@ -205,7 +205,7 @@ const table = useVueTable({
                         :data-state="row.getIsSelected() ? 'selected' : undefined"
                         :class="[
                             'transition-colors duration-100 hover:bg-muted/40',
-                            idx % 2 === 1 ? 'bg-muted/15' : '',
+                            idx % 2 === 1 ? 'bg-muted/50' : '',
                         ]"
                     >
                         <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
@@ -230,7 +230,7 @@ const table = useVueTable({
             <div
                 v-for="row in table.getRowModel().rows"
                 :key="row.id"
-                class="rounded-lg border border-border/60 bg-card p-3 shadow-sm"
+                class="rounded-lg border border-border/80 bg-card p-3 shadow-sm"
             >
                 <slot name="mobile-card" :row="row.original" :row-model="row">
                     <!-- Default mobile card fallback -->
@@ -263,7 +263,7 @@ const table = useVueTable({
                 </slot>
             </div>
         </template>
-        <div v-else class="rounded-lg border border-border/60 bg-card p-8 text-center text-muted-foreground shadow-sm">
+        <div v-else class="rounded-lg border border-border/80 bg-card p-8 text-center text-muted-foreground shadow-sm">
             No servers.
         </div>
     </div>
