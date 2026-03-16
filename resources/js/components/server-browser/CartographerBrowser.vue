@@ -41,7 +41,7 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) =>
     {
       variant: 'ghost',
       class: ['gap-1', buttonClass].filter(Boolean).join(' '),
-      style: 'padding-left: 1.25rem; padding-right: 1.25rem; margin-left: -0.5rem;',
+      style: 'padding-left: 0.5rem; padding-right: 1.25rem; margin-left: -0.5rem;',
       onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
     },
     () => [label, renderSortIcon(state)]
@@ -114,6 +114,7 @@ const columns: ColumnDef<CartoServer>[] =
         {
           variant: 'ghost',
           class: 'gap-0',
+          style: 'padding-left: 0.5rem; padding-right: 1.25rem; margin-left: -0.5rem;',
           onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
           title: 'Custom Map',
         },
@@ -135,13 +136,11 @@ const columns: ColumnDef<CartoServer>[] =
 
         if (!Number.isNaN(midNum) && KNOWN_MAP_IDS.has(midNum)) 
         {
-          return h('span', { class: 'block mx-auto w-8' }, '');
+          return h('span', { class: 'block w-4 h-4' }, '');
         }
       }
 
-      return h('span', { class: 'inline-flex items-center pl-0 -ml-[0px]' },
-        h('span', { class: 'inline-block w-4 h-4 leading-none text-muted-foreground relative top-[0px] icon-mask icon-download-b', title: 'Custom Map' })
-      );
+      return h('span', { class: 'block w-4 h-4 leading-none text-muted-foreground icon-mask icon-download-b', title: 'Custom Map' });
     },
   },
   

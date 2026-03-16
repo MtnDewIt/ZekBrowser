@@ -161,7 +161,7 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }) =>
     {
         variant: 'ghost',
         class: ['gap-1', buttonClass].filter(Boolean).join(' '),
-        style: 'padding-left: 1.25rem; padding-right: 1.25rem; margin-left: -0.5rem;',
+        style: 'padding-left: 0.5rem; padding-right: 1.25rem; margin-left: -0.5rem;',
         onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
     }, 
     () => [label, renderSortIcon(state)]);
@@ -185,7 +185,7 @@ const columns: ColumnDef<ElDewritoServer>[] =
             {
                 variant: 'ghost',
                 class: 'gap-1',
-                style: 'padding-left: 1.25rem; padding-right: 1.25rem; margin-left: -0.5rem;',
+                style: 'padding-left: 0.5rem; padding-right: 0.5rem; margin-left: -0.5rem;',
                 onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
                 title: 'Sort by password protection',
             }, 
@@ -197,15 +197,15 @@ const columns: ColumnDef<ElDewritoServer>[] =
 
             if (!server.passworded) 
             {
-                return h('span', { class: 'block mx-auto w-8' });
+                return h('span', { class: 'block w-5 h-5' });
             }
 
-            return h('span', { class: 'flex mx-auto w-8 h-5 items-center justify-center', title: 'Password protected' },
-                h('span', 
+            return h('span', 
                 {
-                    class: 'block mx-auto w-5 h-5 leading-none text-muted-foreground relative top-[1px] icon-mask icon-lock',
+                    class: 'block w-5 h-5 leading-none text-muted-foreground icon-mask icon-lock',
                     ariaHidden: 'true',
-                })
+                    title: 'Password protected',
+                }
             );
         },
     },
