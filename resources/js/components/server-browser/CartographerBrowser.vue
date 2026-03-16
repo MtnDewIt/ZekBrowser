@@ -290,6 +290,24 @@ defineExpose({ load });
       <template #left>
         <slot name="left" />
       </template>
+      <template #mobile-card="{ row }">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="font-bold text-sm text-foreground truncate">{{ row.server_name || '—' }}</div>
+            <div class="text-xs text-muted-foreground mt-0.5">
+              {{ row.map_name || '' }}
+              <span v-if="row.gametype" class="ml-1">· {{ row.gametype }}</span>
+            </div>
+          </div>
+          <span class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0">
+            {{ row.players?.filled ?? '?' }}/{{ row.players?.max ?? '?' }}
+          </span>
+        </div>
+        <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+          <span v-if="row.variant">{{ row.variant }}</span>
+          <span v-if="row.description" class="truncate">· {{ row.description }}</span>
+        </div>
+      </template>
     </DataTable>
 
     <!-- loading indicator intentionally removed so search and selector remain visible -->

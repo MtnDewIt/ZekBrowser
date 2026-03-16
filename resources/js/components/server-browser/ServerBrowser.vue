@@ -439,6 +439,33 @@ watch(selected, (v) => {
                         </template>
                     </Select>
                 </template>
+                <template #mobile-card="{ row }">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span v-if="row.passworded" class="icon-mask icon-lock w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                <span class="font-bold text-sm text-foreground truncate">{{ row.name }}</span>
+                            </div>
+                            <div class="text-xs text-muted-foreground mt-0.5">
+                                {{ row.statusFormatted() }}
+                                <span v-if="row.hostPlayer" class="ml-1">· {{ row.hostPlayer }}</span>
+                            </div>
+                        </div>
+                        <PlayersCard
+                            :numPlayers="row.numPlayers"
+                            :maxPlayers="row.maxPlayers"
+                            :players="row.players"
+                            :teams="row.teams"
+                            :teamScores="row.teamScores"
+                            :serverVersion="row.eldewritoVersionShort ?? row.eldewritoVersion ?? ''"
+                            :passworded="!!row.passworded"
+                        />
+                    </div>
+                    <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                        <span v-if="row.eldewritoVersion">v{{ row.versionWithoutTrailingZero() }}</span>
+                        <span v-if="row.mods?.length" class="inline-flex items-center cursor-pointer" @click.stop="$event.currentTarget.querySelector('.mods-count-button')?.click()">mods:&nbsp;<ModsCard :mods="row.mods" :jsonUrl="`http://${row.ip}/mods`" :showAsNumber="true" /></span>
+                    </div>
+                </template>
             </DataTable>
         </div>
 
@@ -463,6 +490,23 @@ watch(selected, (v) => {
                             <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
                         </template>
                     </Select>
+                </template>
+                <template #mobile-card="{ row }">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0 flex-1">
+                            <div class="font-bold text-sm text-foreground truncate">{{ row.name || row.info?.hostname || '—' }}</div>
+                            <div class="text-xs text-muted-foreground mt-0.5">
+                                {{ row.map || row.info?.mapname || '' }}
+                                <span v-if="row.gametype" class="ml-1">· {{ row.gametype }}</span>
+                            </div>
+                        </div>
+                        <span class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0">
+                            {{ row.info?.numplayers ?? row.players ?? '?' }}/{{ row.info?.maxplayers ?? '?' }}
+                        </span>
+                    </div>
+                    <div v-if="row.variant || row.info?.gamevariant" class="text-xs text-muted-foreground mt-1.5">
+                        {{ row.variant || row.info?.gamevariant }}
+                    </div>
                 </template>
             </DataTable>
         </div>

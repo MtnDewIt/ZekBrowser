@@ -359,7 +359,7 @@ onUnmounted(() =>
 
     <section class="px-4 py-6 sm:px-6 lg:px-8">
         <div class="mx-auto flex flex-col items-center">
-            <div class="flex flex-col w-full max-w-[1400px]">
+            <div class="flex flex-col w-full max-w-[1800px]">
                 <div class="flex items-center justify-between mb-6">
                     <div class="flex flex-col">
                         <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">ZekBrowser</h1>
