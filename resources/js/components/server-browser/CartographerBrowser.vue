@@ -50,28 +50,24 @@ const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) =>
 
 const columns: ColumnDef<CartoServer>[] = 
 [
-  {
-    accessorKey: 'xuid',
-    header: makeSortHeader('XUID'),
-    cell: ({ row }) => {
-      const val = row.getValue('xuid');
-      if (val === null || typeof val === 'undefined' || String(val).trim() === '') {
-        return h('span', { class: 'tabular-nums text-sm' }, '—');
-      }
-
-      // Use the Laravel proxy route (plural 'servers') so the same-origin
-      // frontend served from port 8000 can access it without CORS issues.
-      const url = `/api/cartographer/servers/${encodeURIComponent(String(val))}`;
-
-      return h('a', {
-        href: url,
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        title: 'View JSON data',
-        class: 'tabular-nums text-sm text-link hover:underline'
-      }, String(val));
-    }
-  },
+  // {
+  //   accessorKey: 'xuid',
+  //   header: makeSortHeader('XUID'),
+  //   cell: ({ row }) => {
+  //     const val = row.getValue('xuid');
+  //     if (val === null || typeof val === 'undefined' || String(val).trim() === '') {
+  //       return h('span', { class: 'tabular-nums text-sm' }, '—');
+  //     }
+  //     const url = `/api/cartographer/servers/${encodeURIComponent(String(val))}`;
+  //     return h('a', {
+  //       href: url,
+  //       target: '_blank',
+  //       rel: 'noopener noreferrer',
+  //       title: 'View JSON data',
+  //       class: 'tabular-nums text-sm text-link hover:underline'
+  //     }, String(val));
+  //   }
+  // },
   { 
     accessorKey: 'server_name', 
     header: makeSortHeader('Server'), 
