@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 
 import { valueUpdater } from '@/lib/utils';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 const props = defineProps<
 {
@@ -58,9 +58,13 @@ const defaultSearchOptions = [
     { label: 'Mods', value: 'mods' },
 ]
 const searchOptions = props.searchOptions ?? defaultSearchOptions;
+const tableData = ref<TData[]>(Array.isArray(props.data) ? props.data : []);
+watch(() => props.data, (v) => {
+    tableData.value = Array.isArray(v) ? [...v] : [];
+}, { deep: true });
 
 const table = useVueTable({
-    get data() { return props.data },
+    get data() { return tableData.value },
     get columns() { return props.columns },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
