@@ -75,7 +75,7 @@ const parts = computed(() => {
     const hex = cp.toString(16).toUpperCase()
     const useImg = availableCodes.value ? availableCodes.value.has(hex) : FALLBACK_CODES.has(cp)
     if (useImg) {
-      arr.push({ src: `/assets/unicode/${hex}.png`, alt: `U+${hex}`, cp })
+      arr.push({ src: `/assets/unicode/${hex}.webp`, alt: `U+${hex}`, cp })
     } else {
       arr.push(ch)
     }
