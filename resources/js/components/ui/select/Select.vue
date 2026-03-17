@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 
 const props = defineProps<{
   modelValue: string
@@ -28,12 +28,8 @@ async function positionDropdown() {
   await nextTick()
   if (!root.value) return
 
-  // Prefer anchoring to the nearest ancestor with the 'relative' class (layout wrapper)
-  // This lets the dropdown align with the end of the search box when the select
-  // is rendered as an icon inside the input container.
   let anchor: HTMLElement | null = null
   try {
-    // search from parentElement to avoid selecting the Select root itself
     anchor = root.value.parentElement?.closest('.relative') as HTMLElement | null
   } catch (e) {
     anchor = null
@@ -41,16 +37,22 @@ async function positionDropdown() {
   if (!anchor) anchor = root.value.parentElement || root.value
 
   const rect = anchor.getBoundingClientRect()
-  // position fixed relative to viewport so it escapes any overflow clipping
-  // place the dropdown just below the anchor (using anchor.bottom) so it
-  // appears under the input instead of overlapping the top edge.
   const OFFSET_PX = 4
-  const left = Math.max(0, Math.round(rect.left))
-  dropdownStyle.value = {
-    position: 'fixed',
-    top: `${Math.round(rect.bottom + OFFSET_PX)}px`,
-    left: `${left}px`,
-    minWidth: `${rect.width}px`,
+
+  if (props.iconOnly) {
+    dropdownStyle.value = {
+      position: 'fixed',
+      top: `${Math.round(rect.bottom + OFFSET_PX)}px`,
+      left: `${Math.max(0, Math.round(rect.left))}px`,
+      width: `${rect.width}px`,
+    }
+  } else {
+    dropdownStyle.value = {
+      position: 'fixed',
+      top: `${Math.round(rect.bottom + OFFSET_PX)}px`,
+      left: `${Math.max(0, Math.round(rect.left))}px`,
+      minWidth: `${rect.width}px`,
+    }
   }
 }
 
@@ -71,44 +73,102 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', positionDropdown)
 })
 
-const selectedLabel = computed(() => {
-  const opt = props.options.find(o => o.value === props.modelValue)
-  return opt ? opt.label : (props.options[0]?.label ?? '')
-})
-
-watch(() => props.modelValue, () => { /* reactive hook for consumers */ })
+const selectedOpt = computed(() => props.options.find(o => o.value === props.modelValue) ?? props.options[0])
+const selectedLabel = computed(() => selectedOpt.value?.label ?? '')
 </script>
 
 <template>
   <div ref="root" class="relative inline-block" :class="class">
+
+    <!-- Compact trigger — rendered inside the search bar, bare chevron icon -->
     <button
+      v-if="props.iconOnly"
       type="button"
-      :class="[
-        props.iconOnly
-          ? 'h-8 w-8 p-0 rounded-md bg-transparent border-0 flex items-center justify-center focus:outline-none focus:ring-0'
-          : 'h-10 min-w-[8rem] px-3 rounded-lg border border-border/60 bg-card text-foreground text-sm relative flex items-center hover:bg-muted/50 transition-colors focus:outline-none focus:ring-0',
-        props.fullWidthTrigger ? 'w-full justify-between' : ''
-      ]"
+      class="h-8 w-8 p-0 rounded-md bg-transparent border-0 flex items-center justify-center focus:outline-none focus:ring-0 hover:bg-muted/60 transition-colors"
+      :aria-label="`Filter by: ${selectedLabel}`"
+      :aria-expanded="open"
+      aria-haspopup="listbox"
       @click="toggle"
     >
-      <template v-if="!props.iconOnly">
-        <span class="truncate pr-8 flex items-center h-full leading-none" style="transform: translateY(-1px);">
-          <slot name="trigger-content" />
-          {{ selectedLabel }}
-        </span>
-      </template>
-      <span class="pointer-events-none" :class="props.iconOnly ? '' : 'absolute right-3 top-1/2 -translate-y-1/2'">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" :style="props.iconOnly ? 'width:1.5em;height:1.5em' : 'width:1.35em;height:1.35em'"><path d="M6 8l4 4 4-4" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg
+        viewBox="0 0 20 20" fill="none" stroke="currentColor"
+        class="w-5 h-5 transition-transform duration-150"
+        :class="open ? 'rotate-180' : ''"
+      >
+        <path d="M6 8l4 4 4-4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <!-- Regular trigger -->
+    <button
+      v-else
+      type="button"
+      :class="[
+        'h-10 px-3 rounded-lg border border-border/60 bg-muted/40 text-foreground text-sm flex items-center gap-2 hover:bg-muted/60 transition-colors focus:outline-none',
+        props.fullWidthTrigger ? 'w-full' : 'min-w-[8rem]',
+      ]"
+      :aria-label="selectedLabel"
+      :aria-expanded="open"
+      aria-haspopup="listbox"
+      @click="toggle"
+    >
+      <span class="flex items-center flex-1 truncate min-w-0 leading-none">
+        <slot name="trigger-content" />
+        {{ selectedLabel }}
       </span>
+      <svg
+        viewBox="0 0 20 20" fill="none" stroke="currentColor"
+        class="w-5 h-5 flex-shrink-0 transition-transform duration-150"
+        :class="open ? 'rotate-180' : ''"
+      >
+        <path d="M6 8l4 4 4-4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
     </button>
 
     <teleport to="body">
-      <ul v-if="open" :style="dropdownStyle" class="z-[99999] mt-1 max-h-80 overflow-auto rounded-lg border border-border/60 bg-card text-foreground shadow-lg ring-1 ring-black/5 dark:ring-white/5">
-        <li v-for="opt in options" :key="opt.value" @click.stop="select(opt.value)" class="px-3 py-2 cursor-pointer hover:bg-muted/60 hover:text-foreground active:bg-transparent focus:outline-none flex items-center transition-colors">
-          <img v-if="opt.icon" :src="opt.icon" :alt="opt.label" :class="['w-5 h-5 mr-2 object-contain', opt.iconRounded ? 'rounded-full' : '']" />
-          <span class="truncate ml-3" style="transform: translate(-1px, -4px);">{{ opt.label }}</span>
-        </li>
-      </ul>
+      <Transition
+        enter-active-class="transition ease-out duration-100"
+        enter-from-class="opacity-0 scale-95 -translate-y-1"
+        enter-to-class="opacity-100 scale-100 translate-y-0"
+        leave-active-class="transition ease-in duration-75"
+        leave-from-class="opacity-100 scale-100 translate-y-0"
+        leave-to-class="opacity-0 scale-95 -translate-y-1"
+      >
+        <ul
+          v-if="open"
+          role="listbox"
+          :aria-label="props.iconOnly ? 'Search filter' : 'Options'"
+          :style="dropdownStyle"
+          class="z-[99999] py-1 max-h-80 overflow-auto rounded-lg border border-border/60 bg-card text-foreground shadow-xl ring-1 ring-black/5 dark:ring-white/10 origin-top"
+        >
+          <li
+            v-for="opt in options"
+            :key="opt.value"
+            role="option"
+            :aria-selected="opt.value === modelValue"
+            @click.stop="select(opt.value)"
+            class="flex items-center gap-2.5 px-3 py-2 cursor-pointer text-sm transition-colors hover:bg-muted/60"
+            :class="opt.value === modelValue ? 'text-foreground font-medium' : 'text-foreground/80'"
+          >
+            <img
+              v-if="opt.icon"
+              :src="opt.icon"
+              :alt="opt.label"
+              class="w-5 h-5 object-contain flex-shrink-0"
+              :class="opt.iconRounded ? 'rounded-full' : ''"
+            />
+            <span class="flex-1 truncate">{{ opt.label }}</span>
+            <svg
+              v-if="opt.value === modelValue"
+              viewBox="0 0 16 16" fill="none" stroke="currentColor"
+              class="w-3.5 h-3.5 flex-shrink-0 text-primary"
+              stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
+            >
+              <path d="M2.5 8l4 4 7-7" />
+            </svg>
+          </li>
+        </ul>
+      </Transition>
     </teleport>
   </div>
 </template>

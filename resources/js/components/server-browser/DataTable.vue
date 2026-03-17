@@ -79,50 +79,42 @@ const table = useVueTable({
 
         if (!searchValue) return true;
 
+        const o = row.original as any;
         const check = (val: any) => String(val ?? '').toLowerCase().includes(searchValue);
 
         if (mode === 'name' || mode === 'server') {
-            return check(row.getValue('name')) || check(row.getValue('server_name')) || check(row.getValue('hostname'));
+            return check(o.name) || check(o.server_name) || check(o.hostname);
         }
 
         if (mode === 'host') {
-            return check(row.getValue('hostPlayer'));
+            return check(o.hostPlayer);
         }
 
         if (mode === 'mods') {
-            const mods = row.original?.mods || [];
+            const mods = o.mods || [];
             return mods.some((mod: any) => check(mod?.mod_name));
         }
 
         if (mode === 'map') {
-            return check(row.getValue('map')) || check(row.getValue('map_name')) || check(row.getValue('mapName'));
+            return check(o.map) || check(o.map_name) || check(o.mapName);
         }
 
         if (mode === 'gametype') {
-            return check(row.getValue('gametype')) || check(row.getValue('gametype_name'));
+            return check(o.gametype) || check(o.gametype_name);
         }
 
         if (mode === 'variant') {
-            return check(row.getValue('variant')) || check(row.getValue('variant_name')) || check(row.getValue('variantType'));
+            return check(o.variant) || check(o.variant_name) || check(o.variantType);
         }
 
         if (mode === 'description') {
-            return check(row.getValue('description')) || check(row.original?.description);
+            return check(o.description);
         }
 
         // default 'all' mode: try several common fields
-        const fields = [
-            row.getValue('name'),
-            row.getValue('server_name'),
-            row.getValue('hostPlayer'),
-            row.getValue('map'),
-            row.getValue('map_name'),
-            row.getValue('gametype'),
-            row.getValue('variant'),
-            row.getValue('description'),
-        ];
+        const fields = [o.name, o.server_name, o.hostname, o.hostPlayer, o.map, o.map_name, o.gametype, o.variant, o.description];
         if (fields.some(f => check(f))) return true;
-        const mods = row.original?.mods || [];
+        const mods = o.mods || [];
         if (mods.some((mod: any) => check(mod?.mod_name))) return true;
         return false;
     },
@@ -148,7 +140,7 @@ const table = useVueTable({
 
 <template>
 
-    <!-- Toolbar: stacks on mobile -->
+    <!-- Toolbar -->
     <div class="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center">
         <div class="flex items-center gap-3">
             <div class="flex-shrink-0">
@@ -156,11 +148,11 @@ const table = useVueTable({
             </div>
 
             <div class="relative flex-1 min-w-0 sm:max-w-sm">
-                <Input 
-                    class="rounded-lg pr-10 bg-muted/40 border-border/60 focus:bg-background transition-colors" 
+                <Input
+                    class="rounded-lg pr-10 bg-muted/40 border-border/60 focus:bg-background transition-colors"
                     :placeholder="searchMode === 'all' ? 'Search servers...' : `Search by ${searchMode}...`"
                     :model-value="globalFilter"
-                    @update:model-value="globalFilter = $event" 
+                    @update:model-value="globalFilter = $event"
                 />
                 <div class="absolute right-2 top-1/2 -translate-y-1/2">
                     <Select v-model="searchMode" :options="searchOptions" :iconOnly="true" />
