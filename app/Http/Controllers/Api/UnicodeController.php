@@ -18,7 +18,7 @@ class UnicodeController extends Controller
         if (File::exists($dir) && File::isDirectory($dir)) {
             $files = File::files($dir);
             foreach ($files as $f) {
-                $name = $f->getBasename('.png');
+                $name = $f->getBasename('.webp');
                 // normalize uppercase hex
                 $out[] = strtoupper($name);
             }
