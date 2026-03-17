@@ -67,7 +67,6 @@
 
 .team-row .stat-cell 
 {
-	padding-left: 45px !important;
 }
 
 .team-info 
@@ -126,8 +125,6 @@
 
 .player-row .stat-cell 
 {
-	padding-left: 45px !important;
-	padding-right: 0 !important;
 }
 
 .player-cell 
