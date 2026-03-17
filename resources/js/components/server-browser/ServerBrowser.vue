@@ -427,15 +427,15 @@ watch(selected, (v) => {
             <DataTable :columns="columns" :data="servers" :players="currentPlayers" :servers="currentServers">
                 <template #left>
                     <Select v-model="selected" class="min-w-[168px]" :options="[
-                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
-                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
-                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
-                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.webp', iconRounded: true },
+                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.webp', iconRounded: true },
+                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.webp', iconRounded: true },
+                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.webp', iconRounded: true },
                     ]" :full-width-trigger="true">
                         <template #trigger-content>
-                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.webp" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.webp" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else src="/assets/logos/cartographer.webp" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
                         </template>
                     </Select>
                 </template>
@@ -480,15 +480,15 @@ watch(selected, (v) => {
             ]">
                 <template #left>
                     <Select v-model="selected" class="min-w-[168px]" :options="[
-                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
-                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
-                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
-                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.webp', iconRounded: true },
+                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.webp', iconRounded: true },
+                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.webp', iconRounded: true },
+                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.webp', iconRounded: true },
                     ]" :full-width-trigger="true">
                         <template #trigger-content>
-                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.webp" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.webp" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else src="/assets/logos/cartographer.webp" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
                         </template>
                     </Select>
                 </template>
@@ -519,15 +519,15 @@ watch(selected, (v) => {
             <CartographerBrowser ref="cartoRef">
                 <template #left>
                     <Select v-model="selected" class="min-w-[168px]" :options="[
-                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.png', iconRounded: true },
-                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.png', iconRounded: true },
-                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.png', iconRounded: true },
-                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.png', iconRounded: true },
+                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.webp', iconRounded: true },
+                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.webp', iconRounded: true },
+                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.webp', iconRounded: true },
+                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.webp', iconRounded: true },
                     ]" :full-width-trigger="true">
                         <template #trigger-content>
-                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.png" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.png" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else src="/assets/logos/cartographer.png" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.webp" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.webp" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
+                            <img v-else src="/assets/logos/cartographer.webp" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
                         </template>
                     </Select>
                 </template>
