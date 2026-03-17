@@ -30,6 +30,14 @@ import { Select } from '@/components/ui/select';
 import { valueUpdater } from '@/lib/utils';
 import { ref, watch } from 'vue';
 
+function debounce<T extends (...args: any[]) => void>(fn: T, wait: number): T {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    return ((...args: any[]) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), wait);
+    }) as T;
+}
+
 const props = defineProps<
 {
     columns: ColumnDef<TData, TValue>[]
@@ -61,7 +69,9 @@ const searchOptions = props.searchOptions ?? defaultSearchOptions;
 const tableData = ref<TData[]>(Array.isArray(props.data) ? props.data : []);
 watch(() => props.data, (v) => {
     tableData.value = Array.isArray(v) ? [...v] : [];
-}, { deep: true });
+});
+
+const debouncedSetFilter = debounce((v: string) => { globalFilter.value = v; }, 200);
 
 const table = useVueTable({
     get data() { return tableData.value },
@@ -152,7 +162,7 @@ const table = useVueTable({
                     class="rounded-lg pr-10 bg-muted/40 border-border/60 focus:bg-background transition-colors"
                     :placeholder="searchMode === 'all' ? 'Search servers...' : `Search by ${searchMode}...`"
                     :model-value="globalFilter"
-                    @update:model-value="globalFilter = $event"
+                    @update:model-value="debouncedSetFilter($event as string)"
                 />
                 <div class="absolute right-2 top-1/2 -translate-y-1/2">
                     <Select v-model="searchMode" :options="searchOptions" :iconOnly="true" />
