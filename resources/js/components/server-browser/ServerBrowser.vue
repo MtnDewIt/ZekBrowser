@@ -451,7 +451,16 @@ watch(selected, (v) => {
                                 <span v-if="row.hostPlayer" class="ml-1">· {{ row.hostPlayer }}</span>
                             </div>
                         </div>
-                        <span class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0">{{ row.numPlayers }}/{{ row.maxPlayers }}</span>
+                        <PlayersCard
+                            :numPlayers="row.numPlayers"
+                            :maxPlayers="row.maxPlayers"
+                            :players="row.players"
+                            :teams="row.teams"
+                            :teamScores="row.teamScores"
+                            :serverVersion="row.eldewritoVersionShort ?? row.eldewritoVersion ?? ''"
+                            :passworded="!!row.passworded"
+                            class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0"
+                        />
                     </div>
                     <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                         <span v-if="row.eldewritoVersion">v{{ row.versionWithoutTrailingZero() }}</span>
@@ -492,9 +501,12 @@ watch(selected, (v) => {
                                 <span v-if="row.gametype" class="ml-1">· {{ row.gametype }}</span>
                             </div>
                         </div>
-                        <span class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0">
-                            {{ row.info?.numplayers ?? row.players ?? '?' }}/{{ row.info?.maxplayers ?? '?' }}
-                        </span>
+                        <HaloPlayersCard
+                            :numPlayers="Number(row.info?.numplayers ?? row.players ?? 0)"
+                            :maxPlayers="Number(row.info?.maxplayers ?? 0)"
+                            :info="row.info"
+                            class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0"
+                        />
                     </div>
                     <div v-if="row.variant || row.info?.gamevariant" class="text-xs text-muted-foreground mt-1.5">
                         {{ row.variant || row.info?.gamevariant }}

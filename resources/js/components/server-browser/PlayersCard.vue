@@ -870,9 +870,9 @@ const groupedPlayers = computed(() =>
                             <tr class="scoreboard-header">
                                 <th class="players-count">Players [{{ numPlayers }}/{{ maxPlayers }}]</th>
                                 <th class="stat-header">Kills</th>
-                                <th class="stat-header">Assists</th>
+                                <th class="stat-header stat-col-assists">Assists</th>
                                 <th class="stat-header">Deaths</th>
-                                <th class="stat-header">Best Streak</th>
+                                <th class="stat-header stat-col-beststreak">Best Streak</th>
                                 <th class="stat-header">Score</th>
                             </tr>
                         </thead>
@@ -885,9 +885,9 @@ const groupedPlayers = computed(() =>
                                             <span class="team-name">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }}</span>
                                         </td>
                                         <td class="stat-cell"></td>
+                                        <td class="stat-cell stat-col-assists"></td>
                                         <td class="stat-cell"></td>
-                                        <td class="stat-cell"></td>
-                                        <td class="stat-cell"></td>
+                                        <td class="stat-cell stat-col-beststreak"></td>
                                         <td class="stat-cell team-score">{{ group.totals.score }}</td>
                                     </tr>
                                     <tr v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="player-row" :style="{ backgroundColor: resolvePlayerColor(p) }">
@@ -914,9 +914,9 @@ const groupedPlayers = computed(() =>
                                                 </div>
                                             </td>
                                             <td class="stat-cell">{{ getPlayerKills(p) }}</td>
-                                            <td class="stat-cell">{{ getPlayerAssists(p) }}</td>
+                                            <td class="stat-cell stat-col-assists">{{ getPlayerAssists(p) }}</td>
                                             <td class="stat-cell">{{ getPlayerDeaths(p) }}</td>
-                                            <td class="stat-cell">{{ getPlayerBestStreak(p) }}</td>
+                                            <td class="stat-cell stat-col-beststreak">{{ getPlayerBestStreak(p) }}</td>
                                             <td class="stat-cell">{{ getPlayerScore(p) }}</td>
                                         </template>
                                         <template v-else>
@@ -950,9 +950,9 @@ const groupedPlayers = computed(() =>
                                             </div>
                                         </td>
                                         <td class="stat-cell">{{ getPlayerKills(p) }}</td>
-                                        <td class="stat-cell">{{ getPlayerAssists(p) }}</td>
+                                        <td class="stat-cell stat-col-assists">{{ getPlayerAssists(p) }}</td>
                                         <td class="stat-cell">{{ getPlayerDeaths(p) }}</td>
-                                        <td class="stat-cell">{{ getPlayerBestStreak(p) }}</td>
+                                        <td class="stat-cell stat-col-beststreak">{{ getPlayerBestStreak(p) }}</td>
                                         <td class="stat-cell">{{ getPlayerScore(p) }}</td>
                                     </template>
                                     <template v-else>
