@@ -9,7 +9,7 @@ import CartographerBrowser from '@/components/server-browser/CartographerBrowser
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { h, ref, defineExpose, watch, onMounted } from 'vue';
+import { h, ref, watch, onMounted } from 'vue';
 import type { ColumnDef } from '@tanstack/vue-table';
 
 interface Props 
