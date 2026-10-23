@@ -2,7 +2,7 @@
 import Scoreboard from '@/components/server-browser/Scoreboard.vue';
 import { groupBy, sortGroups, type ScoreboardGroup, type ScoreboardPlayer } from '@/lib/scoreboard';
 import { TEAM_NAMES, teamColor, toTeamIndex } from '@/lib/teams';
-import { computed } from 'vue';
+import { computed, h } from 'vue';
 
 /**
  * Scoreboard popover for GameSpy (Halo CE / Halo PC) servers. Players arrive as
@@ -53,7 +53,7 @@ const players = computed<Player[]>(() => {
 const byScore = (a: Player, b: Player) => b.score - a.score;
 
 const toRow = (p: Player): ScoreboardPlayer => ({
-    cell: p.name,
+    cell: h('div', { class: 'player-cell' }, h('div', { class: 'player-info' }, h('span', { class: 'player-name' }, p.name))),
     stats: [p.score],
     color: teamsEnabled.value ? teamColor(p.team) : '#666666',
 });
