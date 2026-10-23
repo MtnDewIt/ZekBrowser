@@ -390,7 +390,7 @@ async def _gamespy_master_server_list(game: str, timeout: float = 5.0) -> list[G
             return []
         return [GameSpyServer(ip, port, game) for ip, port in _decode_master_server_response(decrypted)]
     except Exception as e:
-        logger.warning("GameSpy master server query for %s failed: %s", game, e)
+        logger.warning("GameSpy master server query for %s failed: %s", game, repr(e))
         return []
 
 
@@ -718,7 +718,8 @@ async def fetch_master_list(client: httpx.AsyncClient, url: str) -> list[str]:
         servers = data.get("result", {}).get("servers") if isinstance(data, dict) else None
         return [s for s in servers if isinstance(s, str)] if isinstance(servers, list) else []
     except Exception as e:
-        logger.warning("Failed to query master server %s: %s", url, e)
+        # httpx timeouts stringify to "", so include the exception type.
+        logger.warning("Failed to query master server %s: %s", url, repr(e))
         return []
 
 
