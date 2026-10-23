@@ -6,6 +6,9 @@ import { Head } from '@inertiajs/vue3';
 import type { Options } from 'highcharts';
 import { Chart } from 'highcharts-vue';
 import 'highcharts/css/highcharts.css';
+// Stock module only for dataGrouping: the history has tens of thousands of
+// points, grouping renders a few hundred and regroups on zoom.
+import 'highcharts/modules/stock';
 import { onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps<{
@@ -23,25 +26,51 @@ const isRefreshing = ref(false);
 const statsStatus = ref('Loading...');
 const chartOptions = ref<Options>({
     accessibility: { enabled: false },
-    chart: { styledMode: true, zooming: { type: 'x' } },
+    chart: { styledMode: true, zooming: { type: 'x' }, animation: false },
     credits: { enabled: false },
     title: { text: undefined },
     xAxis: { type: 'datetime' },
     yAxis: { title: { text: undefined } },
     legend: { enabled: false },
+    tooltip: { valueDecimals: 0 },
+    plotOptions: {
+        series: {
+            animation: false,
+            turboThreshold: 0,
+            marker: { enabled: false },
+            states: { hover: { lineWidthPlus: 0 } },
+            dataGrouping: { enabled: true, approximation: 'average', groupPixelWidth: 3 },
+        },
+    },
 });
 
-async function fetchStats(): Promise<void> {
-    try {
-        const data = await fetchJson<StatsSeries>(statsUrl(props.zekBrowserApi, activeBrowser.value));
+/** Identity of the series currently drawn, so an unchanged poll does not redraw 20k+ points. */
+let drawnStats = '';
 
-        chartOptions.value = {
-            ...chartOptions.value,
-            series: [
-                { type: 'line', name: 'Players', data: data.players, turboThreshold: 10000, marker: { enabled: false } },
-                { type: 'line', name: 'Servers', data: data.servers, turboThreshold: 10000, marker: { enabled: false } },
-            ],
-        };
+function statsKey(game: BrowserType, data: StatsSeries): string {
+    const last = (s: [number, number][]) => (s.length ? `${s.length}:${s[s.length - 1][0]}:${s[s.length - 1][1]}` : '0');
+
+    return `${game}|${last(data.players)}|${last(data.servers)}`;
+}
+
+async function fetchStats(): Promise<void> {
+    const game = activeBrowser.value;
+
+    try {
+        const data = await fetchJson<StatsSeries>(statsUrl(props.zekBrowserApi, game));
+        const key = statsKey(game, data);
+
+        if (key !== drawnStats) {
+            drawnStats = key;
+            chartOptions.value = {
+                ...chartOptions.value,
+                series: [
+                    { type: 'line', name: 'Players', data: data.players },
+                    { type: 'line', name: 'Servers', data: data.servers },
+                ],
+            };
+        }
+
         statsStatus.value = '';
     } catch (error) {
         statsStatus.value = 'Whoops, something bad happened.';
