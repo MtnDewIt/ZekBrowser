@@ -28,15 +28,12 @@ return
     |
     */
 
-    'connections' =>
-    [
-        'sync' =>
-        [
+    'connections' => [
+        'sync' => [
             'driver' => 'sync',
         ],
 
-        'database' =>
-        [
+        'database' => [
             'driver' => 'database',
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
@@ -45,8 +42,7 @@ return
             'after_commit' => false,
         ],
 
-        'beanstalkd' =>
-        [
+        'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),
             'queue' => env('BEANSTALKD_QUEUE', 'default'),
@@ -55,8 +51,7 @@ return
             'after_commit' => false,
         ],
 
-        'sqs' =>
-        [
+        'sqs' => [
             'driver' => 'sqs',
             'key' => env('AWS_ACCESS_KEY_ID'),
             'secret' => env('AWS_SECRET_ACCESS_KEY'),
@@ -67,8 +62,7 @@ return
             'after_commit' => false,
         ],
 
-        'redis' =>
-        [
+        'redis' => [
             'driver' => 'redis',
             'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
             'queue' => env('REDIS_QUEUE', 'default'),
@@ -89,8 +83,7 @@ return
     |
     */
 
-    'batching' =>
-    [
+    'batching' => [
         'database' => env('DB_CONNECTION', 'sqlite'),
         'table' => 'job_batches',
     ],
@@ -108,8 +101,7 @@ return
     |
     */
 
-    'failed' =>
-    [
+    'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
         'database' => env('DB_CONNECTION', 'sqlite'),
         'table' => 'failed_jobs',

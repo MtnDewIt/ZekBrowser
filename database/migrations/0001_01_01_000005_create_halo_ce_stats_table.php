@@ -8,8 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('haloce_stats', function (Blueprint $table)
-        {
+        Schema::create('haloce_stats', function (Blueprint $table) {
             $table->id();
             $table->integer('player_count')->default(0);
             $table->integer('server_count')->default(0);

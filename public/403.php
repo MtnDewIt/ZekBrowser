@@ -1,19 +1,19 @@
 <?php
 // Simple PHP 403 page that picks a random image from public/assets/404 if available
-$imgDir = __DIR__ . '/assets/404';
+$imgDir = __DIR__.'/assets/404';
 $images = [];
 if (is_dir($imgDir)) {
     $files = scandir($imgDir);
     foreach ($files as $f) {
         $ext = strtolower(pathinfo($f, PATHINFO_EXTENSION));
-        if (in_array($ext, ['jpg','jpeg','png','webp','gif'])) {
-            $images[] = '/assets/404/' . rawurlencode($f);
+        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+            $images[] = '/assets/404/'.rawurlencode($f);
         }
     }
 }
 $bg = count($images) ? $images[array_rand($images)] : null;
 if ($bg) {
-    $bg .= (strpos($bg, '?') === false ? '?' : '&') . 'cb=' . time();
+    $bg .= (strpos($bg, '?') === false ? '?' : '&').'cb='.time();
 }
 http_response_code(403);
 ?>
@@ -38,11 +38,11 @@ http_response_code(403);
   </style>
 </head>
 <body>
-<?php if ($bg): ?>
+<?php if ($bg) { ?>
   <div class="bg" style="background-image:url('<?php echo htmlspecialchars($bg, ENT_QUOTES); ?>')"></div>
-<?php else: ?>
+<?php } else { ?>
   <div class="bg" style="background:linear-gradient(180deg,#0b0b0b,#1a1a1a)"></div>
-<?php endif; ?>
+<?php } ?>
 
   <div class="overlay">
     <h1>403 — Forbidden</h1>

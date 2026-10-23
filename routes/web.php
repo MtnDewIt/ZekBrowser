@@ -7,5 +7,5 @@ Route::get('/', [ServerBrowserController::class, 'index'])->name('server-browser
 
 // Route used by nginx to render a proper 403 page when nginx returns 403
 Route::get('/error/403', function () {
-	abort(403);
+    abort(403);
 });
