@@ -6,10 +6,16 @@ composer install --ignore-platform-reqs --no-autoloader
 npm install
 pip install -r requirements.txt
 
-Copy-Item .env.example .env -Force
-php artisan key:generate
+# Keep an existing .env (and its APP_KEY); only bootstrap one on first run.
+if (-not (Test-Path .env)) {
+    Copy-Item .env.example .env
+    php artisan key:generate
+}
 
-New-Item -Path database -Name database.sqlite -ItemType File -Force | Out-Null
+# Never recreate the database file: New-Item -Force would truncate it.
+if (-not (Test-Path database/database.sqlite)) {
+    New-Item -Path database -Name database.sqlite -ItemType File | Out-Null
+}
 php artisan migrate
 
 npm run build
@@ -37,8 +43,8 @@ Write-Host "Press any key to stop all servers..."
 
 Write-Host "Stopping servers..."
 
-taskkill /PID $laravel.Id /T /F | Out-Null
-taskkill /PID $python.Id  /T /F | Out-Null
-taskkill /PID $vite.Id    /T /F | Out-Null
+foreach ($proc in @($laravel, $python, $vite)) {
+    taskkill /PID $proc.Id /T /F | Out-Null
+}
 
 Write-Host "All servers stopped."

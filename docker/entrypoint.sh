@@ -1,58 +1,58 @@
 #!/bin/sh
+# Container entrypoint: prepare writable dirs, the SQLite database and .env,
+# run migrations and cache Laravel config, then hand over to supervisord.
+set -eu
 
-set -e
-
-mkdir -p /var/www/storage/framework/sessions
-mkdir -p /var/www/storage/framework/views
-mkdir -p /var/www/storage/framework/cache
-mkdir -p /var/www/storage/logs
-mkdir -p /var/www/database
-
-DB_FILE="/var/www/database/database.sqlite"
+APP_DIR="/var/www"
+ENV_FILE="$APP_DIR/.env"
+DB_FILE="$APP_DIR/database/database.sqlite"
 LEGACY_DB="/legacy_database_import/database.sqlite"
+
+for dir in storage/framework/sessions storage/framework/views storage/framework/cache storage/logs database; do
+    mkdir -p "$APP_DIR/$dir"
+done
 
 if [ ! -f "$DB_FILE" ]; then
     if [ -f "$LEGACY_DB" ]; then
-        echo "Migrating legacy database..."
+        echo "Importing legacy database from $LEGACY_DB..."
         cp "$LEGACY_DB" "$DB_FILE"
     else
         echo "Creating new database..."
         touch "$DB_FILE"
     fi
-    chown www-data:www-data "$DB_FILE"
 fi
 
-if [ ! -f /var/www/.env ]; then
-    cp /var/www/.env.example /var/www/.env
+if [ ! -f "$ENV_FILE" ]; then
+    cp "$APP_DIR/.env.example" "$ENV_FILE"
 fi
 
-if ! grep -q "^APP_KEY=base64:" /var/www/.env 2>/dev/null; then
-    php /var/www/artisan key:generate --force
+if ! grep -q "^APP_KEY=base64:" "$ENV_FILE"; then
+    php "$APP_DIR/artisan" key:generate --force
 fi
 
-sed -i 's/^APP_ENV=.*/APP_ENV=production/' /var/www/.env
-sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/' /var/www/.env
+# Pin the values the container relies on, whatever the shipped .env says.
+set_env() {
+    if grep -q "^$1=" "$ENV_FILE"; then
+        sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"
+    else
+        echo "$1=$2" >> "$ENV_FILE"
+    fi
+}
 
-sed -i 's/^APP_URL=.*/APP_URL=/' /var/www/.env
+set_env APP_ENV production
+set_env APP_DEBUG false
+set_env APP_URL ""
+set_env PYTHON_API_URL http://127.0.0.1:8001
 
-if ! grep -q "^PYTHON_API_URL=" /var/www/.env 2>/dev/null; then
-    echo "PYTHON_API_URL=http://127.0.0.1:8001" >> /var/www/.env
-else
-    sed -i 's|^PYTHON_API_URL=.*|PYTHON_API_URL=http://127.0.0.1:8001|' /var/www/.env
-fi
+chown -R www-data:www-data "$APP_DIR/storage" "$APP_DIR/bootstrap/cache" "$APP_DIR/database"
+chmod -R 775 "$APP_DIR/storage" "$APP_DIR/bootstrap/cache"
 
-chown -R www-data:www-data /var/www/storage
-chown -R www-data:www-data /var/www/bootstrap/cache
-chown -R www-data:www-data /var/www/database
-chmod -R 775 /var/www/storage
-chmod -R 775 /var/www/bootstrap/cache
+php "$APP_DIR/artisan" migrate --force
 
-php /var/www/artisan migrate --force
-
-php /var/www/artisan config:clear
-php /var/www/artisan config:cache
-php /var/www/artisan route:cache
-php /var/www/artisan view:cache
+php "$APP_DIR/artisan" config:clear
+php "$APP_DIR/artisan" config:cache
+php "$APP_DIR/artisan" route:cache
+php "$APP_DIR/artisan" view:cache
 
 mkdir -p /var/log/supervisor
 
