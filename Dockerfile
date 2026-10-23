@@ -1,4 +1,4 @@
-FROM php:8.5-fpm-alpine AS builder
+FROM php:8.5.12-fpm-alpine AS builder
 
 WORKDIR /var/www
 
@@ -23,7 +23,7 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN npm ci && npm run build
 RUN rm -rf node_modules
 
-FROM php:8.5-fpm-alpine
+FROM php:8.5.12-fpm-alpine
 
 WORKDIR /var/www
 
