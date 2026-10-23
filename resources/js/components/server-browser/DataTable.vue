@@ -1,114 +1,66 @@
-<script setup lang="ts" generic="TData, TValue">
+<script setup lang="ts" generic="TData">
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { valueUpdater } from '@/components/ui/table/utils';
+import { searchText, type ServerListDefinition } from '@/lib/serverList';
 import {
     FlexRender,
     getCoreRowModel,
     getFilteredRowModel,
     getSortedRowModel,
     useVueTable,
-    type ColumnDef,
     type SortingState,
+    type Updater,
 } from '@tanstack/vue-table';
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, type Ref, type VNode } from 'vue';
 
+/** Sortable, searchable server table with a card layout on small screens. */
 const props = defineProps<{
-    columns: ColumnDef<TData, TValue>[];
+    definition: ServerListDefinition<TData>;
     data: TData[];
-    searchOptions?: { label: string; value: string }[];
-    initialSearchMode?: string;
-    initialSorting?: SortingState;
     players?: number | null;
     servers?: number | null;
 }>();
 
-const DEFAULT_SEARCH_OPTIONS = [
-    { label: 'All', value: 'all' },
-    { label: 'Server', value: 'name' },
-    { label: 'Host', value: 'host' },
-    { label: 'Mods', value: 'mods' },
-];
-
-const sorting = ref<SortingState>(props.initialSorting ?? [{ id: 'numPlayers', desc: true }]);
+const sorting = ref<SortingState>(props.definition.initialSorting);
 const globalFilter = ref('');
-const searchMode = ref<string>(props.initialSearchMode ?? 'all');
-const searchOptions = props.searchOptions ?? DEFAULT_SEARCH_OPTIONS;
+const searchMode = ref('all');
 
-function debounce<T extends (...args: never[]) => void>(fn: T, wait: number): T {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+let filterTimer: ReturnType<typeof setTimeout> | undefined;
 
-    return ((...args: Parameters<T>) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), wait);
-    }) as T;
+function setFilter(value: string) {
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(() => (globalFilter.value = value), 200);
 }
 
-const debouncedSetFilter = debounce((v: string) => {
-    globalFilter.value = v;
-}, 200);
-
-type Row = Record<string, unknown>;
-
-function matchesSearch(original: Row, mode: string, needle: string): boolean {
-    const check = (val: unknown) =>
-        String(val ?? '')
-            .toLowerCase()
-            .includes(needle);
-    const mods = Array.isArray(original.mods) ? (original.mods as Row[]) : [];
-    const modMatches = () => mods.some((mod) => check(mod?.mod_name));
-
-    switch (mode) {
-        case 'name':
-        case 'server':
-            return check(original.name) || check(original.server_name) || check(original.hostname);
-        case 'host':
-            return check(original.hostPlayer);
-        case 'mods':
-            return modMatches();
-        case 'map':
-            return check(original.map) || check(original.map_name) || check(original.mapName);
-        case 'gametype':
-            return check(original.gametype) || check(original.gametype_name);
-        case 'variant':
-            return check(original.variant) || check(original.variant_name) || check(original.variantType);
-        case 'description':
-            return check(original.description);
-        default: {
-            const fields = [
-                original.name,
-                original.server_name,
-                original.hostname,
-                original.hostPlayer,
-                original.map,
-                original.map_name,
-                original.gametype,
-                original.variant,
-                original.description,
-            ];
-
-            return fields.some(check) || modMatches();
-        }
-    }
-}
+const update =
+    <T,>(target: Ref<T>) =>
+    (updaterOrValue: Updater<T>) => {
+        target.value = typeof updaterOrValue === 'function' ? (updaterOrValue as (old: T) => T)(target.value) : updaterOrValue;
+    };
 
 const table = useVueTable({
     get data() {
         return props.data;
     },
     get columns() {
-        return props.columns;
+        return props.definition.columns;
     },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onSortingChange: (updaterOrValue) => valueUpdater(updaterOrValue, sorting),
-    onGlobalFilterChange: (updaterOrValue) => valueUpdater(updaterOrValue, globalFilter),
+    onSortingChange: update(sorting),
+    onGlobalFilterChange: update(globalFilter),
     globalFilterFn: (row, _columnId, filterValue) => {
         const needle = String(filterValue ?? '').toLowerCase();
 
-        return !needle || matchesSearch(row.original as Row, String(searchMode.value || 'all'), needle);
+        return (
+            !needle ||
+            searchText(props.definition, row.original, searchMode.value).some((v) =>
+                String(v ?? '')
+                    .toLowerCase()
+                    .includes(needle),
+            )
+        );
     },
     state: {
         get sorting() {
@@ -119,6 +71,25 @@ const table = useVueTable({
         },
     },
 });
+
+const MobileCard = (p: { render: (row: TData) => VNode; row: TData }) => p.render(p.row);
+
+// Horizontal wheel scrolls the table when it overflows; vertical wheel stays with the page.
+const container = ref<HTMLElement | null>(null);
+
+function onWheel(e: WheelEvent) {
+    const el = container.value;
+
+    if (el && Math.abs(e.deltaX) > Math.abs(e.deltaY) && el.scrollWidth > el.clientWidth) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaX;
+    }
+}
+
+onMounted(() => container.value?.addEventListener('wheel', onWheel, { passive: false }));
+onBeforeUnmount(() => container.value?.removeEventListener('wheel', onWheel));
+
+const CELL = 'px-3 py-2.5 align-middle whitespace-nowrap';
 </script>
 
 <template>
@@ -134,10 +105,10 @@ const table = useVueTable({
                     class="rounded-lg border-border/60 bg-muted/40 pr-10 transition-colors focus:bg-background"
                     :placeholder="searchMode === 'all' ? 'Search servers...' : `Search by ${searchMode}...`"
                     :model-value="globalFilter"
-                    @update:model-value="debouncedSetFilter(String($event))"
+                    @update:model-value="setFilter(String($event))"
                 />
                 <div class="absolute top-1/2 right-2 -translate-y-1/2">
-                    <Select v-model="searchMode" :options="searchOptions" :icon-only="true" />
+                    <Select v-model="searchMode" :options="definition.search" :icon-only="true" />
                 </div>
             </div>
         </div>
@@ -156,50 +127,54 @@ const table = useVueTable({
 
     <!-- Desktop: table view -->
     <div class="hidden rounded-xl border border-border/60 bg-card shadow-sm md:block">
-        <Table class="text-sm">
-            <TableHeader>
-                <TableRow
-                    v-for="headerGroup in table.getHeaderGroups()"
-                    :key="headerGroup.id"
-                    class="border-b border-border/80 bg-muted/30 hover:bg-transparent"
-                >
-                    <TableHead v-for="header in headerGroup.headers" :key="header.id" class="text-xs tracking-wide uppercase">
-                        <FlexRender
-                            v-if="!header.isPlaceholder"
-                            :render="header.column.columnDef.header"
-                            :props="header.getContext()"
-                            class="p-0 font-semibold text-muted-foreground! hover:text-foreground!"
-                        />
-                    </TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                <template v-if="table.getRowModel().rows?.length">
-                    <TableRow
-                        v-for="(row, idx) in table.getRowModel().rows"
-                        :key="row.id"
-                        class="transition-colors duration-100 hover:bg-muted/40"
-                        :style="idx % 2 === 1 ? { backgroundColor: 'var(--stripe)' } : undefined"
+        <div ref="container" class="relative w-full overflow-x-auto">
+            <table class="w-full caption-bottom text-sm">
+                <thead class="[&_tr]:border-b">
+                    <tr
+                        v-for="headerGroup in table.getHeaderGroups()"
+                        :key="headerGroup.id"
+                        class="border-b border-border/80 bg-muted/30 transition-colors hover:bg-transparent"
                     >
-                        <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
-                            <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" class="text-wrap" />
-                        </TableCell>
-                    </TableRow>
-                </template>
-                <template v-else>
-                    <TableRow>
-                        <TableCell :colspan="columns.length" class="h-24 text-center text-muted-foreground">No servers.</TableCell>
-                    </TableRow>
-                </template>
-            </TableBody>
-        </Table>
+                        <th
+                            v-for="header in headerGroup.headers"
+                            :key="header.id"
+                            class="h-10 px-3 text-left align-middle text-xs font-medium tracking-wide whitespace-nowrap text-muted-foreground uppercase"
+                        >
+                            <FlexRender
+                                v-if="!header.isPlaceholder"
+                                :render="header.column.columnDef.header"
+                                :props="header.getContext()"
+                                class="p-0 font-semibold text-muted-foreground! hover:text-foreground!"
+                            />
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="[&_tr:last-child]:border-0">
+                    <template v-if="table.getRowModel().rows?.length">
+                        <tr
+                            v-for="(row, idx) in table.getRowModel().rows"
+                            :key="row.id"
+                            class="border-b border-border/40 transition-colors duration-100 hover:bg-muted/40"
+                            :style="idx % 2 === 1 ? { backgroundColor: 'var(--stripe)' } : undefined"
+                        >
+                            <td v-for="cell in row.getVisibleCells()" :key="cell.id" :class="CELL">
+                                <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" class="text-wrap" />
+                            </td>
+                        </tr>
+                    </template>
+                    <tr v-else class="border-b border-border/40">
+                        <td :colspan="definition.columns.length" :class="[CELL, 'h-24 text-center text-muted-foreground']">No servers.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Mobile: card view -->
     <div class="flex flex-col gap-2 md:hidden">
         <template v-if="table.getRowModel().rows?.length">
             <div v-for="row in table.getRowModel().rows" :key="row.id" class="rounded-lg border border-border/60 bg-card p-3 shadow-sm">
-                <slot name="mobile-card" :row="row.original" :row-model="row" />
+                <MobileCard :render="definition.mobileCard" :row="row.original" />
             </div>
         </template>
         <div v-else class="rounded-lg border border-border/60 bg-card p-8 text-center text-muted-foreground shadow-sm">No servers.</div>
