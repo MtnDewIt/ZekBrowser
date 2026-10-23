@@ -3,24 +3,15 @@
 namespace App\Http\Controllers\ServerBrowser;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ServerBrowserController extends Controller
 {
-    public function index(Request $request): \Inertia\Response
+    public function index(): Response
     {
-        $theme = $request->get('theme', 'zekbrowser');
-
-        $view = match ($theme) {
-            'zekbrowser' => 'zekbrowser',
-            default => 'zekbrowser',
-        };
-
-        $apiUrl = '/api/';
-
-        return Inertia::render("$view", [
-            'zekBrowserApi' => $apiUrl,
+        return Inertia::render('zekbrowser', [
+            'zekBrowserApi' => '/api/',
         ]);
     }
 }

@@ -3,89 +3,54 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\PythonApi;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Response;
 
+/**
+ * Public JSON endpoints that pass through to the internal FastAPI service.
+ * Lists are cached briefly so browser polling does not hammer the Python process.
+ */
 class ProxyController extends Controller
 {
-    private string $pythonApiUrl;
+    private const LIST_CACHE_SECONDS = 30;
 
-    private string $applicationPath = 'application/json';
+    public function __construct(private readonly PythonApi $api) {}
 
-    public function __construct()
+    public function eldewritoList(): Response
     {
-        $this->pythonApiUrl = config('eldewrito.python_api_url', 'http://127.0.0.1:8001');
+        return $this->api->proxy('/api/');
     }
 
-    public function index()
+    public function serviceRecord(Request $request): Response
     {
-        try
-        {
-            $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/");
-            
-            return response($response->body(), $response->status())
-                ->header('Content-Type', $this->applicationPath);
+        $uid = $request->query('uid') ?? $request->json('uid');
+
+        if (! is_string($uid) || $uid === '') {
+            return response(json_encode(['error' => 'Missing or invalid uid']), 400)
+                ->header('Content-Type', PythonApi::CONTENT_TYPE);
         }
-        catch (\Exception $e)
-        {
-            return response()->json([
-                'error' => 'Failed to fetch server data',
-                'message' => $e->getMessage()
-            ], 503);
-        }
+
+        return $this->api->proxy('/api/servicerecord', ['uid' => $uid]);
     }
 
-    public function stats()
+    public function cartographerList(): Response
     {
-        try
-        {
-            $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/stats");
-            
-            return response($response->body(), $response->status())
-                ->header('Content-Type', $this->applicationPath);
-        }
-        catch (\Exception $e)
-        {
-            return response()->json([
-                'error' => 'Failed to fetch stats data',
-                'message' => $e->getMessage()
-            ], 503);
-        }
+        return $this->api->proxy('/api/cartographer', [], 'cartographer:list:summary', self::LIST_CACHE_SECONDS);
     }
 
-    public function serviceRecord(Request $request)
+    public function cartographerServer(string $id): Response
     {
-        $json = [];
-        
-        try
-        {
-            $json = $request->json()->all();
-        }
-        catch (\Exception $e)
-        {
-            $json = [];
-        }
+        return $this->api->proxy("/api/cartographer/server/$id", [], "cartographer:server:$id", self::LIST_CACHE_SECONDS);
+    }
 
-        $uid = $request->query('uid') ?? ($json['uid'] ?? null);
+    public function haloceList(): Response
+    {
+        return $this->api->proxy('/api/haloce', [], 'haloce:list', self::LIST_CACHE_SECONDS);
+    }
 
-        if (!isset($uid) || !is_string($uid) || $uid === '') 
-        {
-            return response()->json(['error' => 'Missing or invalid uid'], 400);
-        }
-
-        try
-        {
-            $response = Http::timeout(30)->get("{$this->pythonApiUrl}/api/servicerecord", ['uid' => $uid]);
-
-            return response($response->body(), $response->status())
-                ->header('Content-Type', $this->applicationPath);
-        }
-        catch (\Exception $e)
-        {
-            return response()->json([
-                'error' => 'Failed to fetch service record',
-                'message' => $e->getMessage()
-            ], 503);
-        }
+    public function halopcList(): Response
+    {
+        return $this->api->proxy('/api/halopc', [], 'halopc:list', self::LIST_CACHE_SECONDS);
     }
 }

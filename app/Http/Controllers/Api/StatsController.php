@@ -3,29 +3,33 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ServerStat;
+use App\Services\StatsRepository;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * Historical player/server counts for the stats chart, one endpoint per game.
+ */
 class StatsController extends Controller
 {
-    public function index(): JsonResponse
+    public function __construct(private readonly StatsRepository $stats) {}
+
+    public function eldewrito(): JsonResponse
     {
-        $stats = ServerStat::orderBy('recorded_at', 'asc')
-            ->get(['recorded_at', 'player_count', 'server_count']);
+        return response()->json($this->stats->history('eldewrito'));
+    }
 
-        $players = [];
-        $servers = [];
+    public function cartographer(): JsonResponse
+    {
+        return response()->json($this->stats->history('cartographer'));
+    }
 
-        foreach ($stats as $stat)
-        {
-            $timestamp = $stat->recorded_at->timestamp * 1000;
-            $players[] = [$timestamp, $stat->player_count];
-            $servers[] = [$timestamp, $stat->server_count];
-        }
+    public function haloce(): JsonResponse
+    {
+        return response()->json($this->stats->history('haloce'));
+    }
 
-        return response()->json([
-            'players' => $players,
-            'servers' => $servers,
-        ]);
+    public function halopc(): JsonResponse
+    {
+        return response()->json($this->stats->history('halopc'));
     }
 }

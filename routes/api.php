@@ -1,35 +1,28 @@
 <?php
 
 use App\Http\Controllers\Api\ProxyController;
+use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\UnicodeController;
-use App\Http\Controllers\Api\CartographerProxyController;
-use App\Http\Controllers\Api\CartographerStatsController;
-use App\Http\Controllers\Api\HaloCEProxyController;
-use App\Http\Controllers\Api\HaloCEStatsController;
-use App\Http\Controllers\Api\HaloPCProxyController;
-use App\Http\Controllers\Api\HaloPCStatsController;
 use Illuminate\Support\Facades\Route;
 
-// Backup proxy endpoints because zekken is *something*
-Route::get('/', [ProxyController::class, 'index']);
-Route::get('/stats', [ProxyController::class, 'stats']);
+// Everything under /api is a same-origin pass-through to the internal FastAPI
+// service (server.py) so the browser never has to deal with CORS.
+
+// ElDewrito
+Route::get('/', [ProxyController::class, 'eldewritoList']);
+Route::get('/stats', [StatsController::class, 'eldewrito']);
 Route::get('/servicerecord', [ProxyController::class, 'serviceRecord']);
 
-// ElDewrito proxy endpoints to avoid CORS issues from the browser
-// Route::get('/eldewrito/list', [ProxyController::class, 'list']);
-// Route::get('/eldewrito/stats', [ProxyController::class, 'stats']);
-// Route::get('/eldewrito/servicerecord', [ProxyController::class, 'serviceRecord']);
-
-// Cartographer proxy endpoints to avoid CORS issues from the browser
-Route::get('/cartographer/list', [CartographerProxyController::class, 'list']);
-Route::get('/cartographer/servers/{id}', [CartographerProxyController::class, 'server']);
-Route::get('/cartographer/stats', [CartographerStatsController::class, 'index']);
+// Project Cartographer
+Route::get('/cartographer/list', [ProxyController::class, 'cartographerList']);
+Route::get('/cartographer/servers/{id}', [ProxyController::class, 'cartographerServer'])->where('id', '[A-Za-z0-9_-]+');
+Route::get('/cartographer/stats', [StatsController::class, 'cartographer']);
 Route::get('/unicode/list', [UnicodeController::class, 'list']);
 
-// Halo CE proxy endpoints to avoid CORS issues from the browser
-Route::get('/haloce/list', [HaloCEProxyController::class, 'list']);
-Route::get('/haloce/stats', [HaloCEStatsController::class, 'index']);
+// Halo Custom Edition
+Route::get('/haloce/list', [ProxyController::class, 'haloceList']);
+Route::get('/haloce/stats', [StatsController::class, 'haloce']);
 
-// Halo PC proxy endpoints to avoid CORS issues from the browser
-Route::get('/halopc/list', [HaloPCProxyController::class, 'list']);
-Route::get('/halopc/stats', [HaloPCStatsController::class, 'index']);
+// Halo PC
+Route::get('/halopc/list', [ProxyController::class, 'halopcList']);
+Route::get('/halopc/stats', [StatsController::class, 'halopc']);

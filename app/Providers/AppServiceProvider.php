@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\PythonApi;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -9,7 +10,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Do we really need this?
+        $this->app->singleton(PythonApi::class, fn () => new PythonApi(
+            config('eldewrito.python_api_url', 'http://127.0.0.1:8001'),
+        ));
     }
 
     public function boot(): void
