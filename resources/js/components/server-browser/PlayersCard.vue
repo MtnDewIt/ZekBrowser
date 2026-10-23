@@ -19,7 +19,7 @@ import {
 import { isVersionAtLeast, playerRank, playerStatsHref, preloadPlayerStats, resolveStatsId } from '@/lib/eldewritoStats';
 import { emblemSrc, ensureEmblem } from '@/lib/emblemGenerator';
 import { groupBy, sortGroups, type ScoreboardColumn, type ScoreboardGroup, type ScoreboardPlayer } from '@/lib/scoreboard';
-import { TEAM_NAMES } from '@/lib/teams';
+import { PLAYER_ROW_COLOR, TEAM_NAMES } from '@/lib/teams';
 import { computed, h } from 'vue';
 
 /** Scoreboard popover for an ElDewrito server. */
@@ -119,7 +119,7 @@ const groups = computed<ScoreboardGroup[]>(() => {
     // Malformed entries are shown raw at the end.
     const raw: ScoreboardPlayer[] = (props.players ?? [])
         .filter((p) => !isPlayerObject(p))
-        .map((p) => ({ cell: String(p), stats: [], color: '#424242', raw: true }));
+        .map((p) => ({ cell: String(p), stats: [], color: PLAYER_ROW_COLOR, raw: true }));
 
     if (!teamsEnabled.value) {
         return [{ team: null, totals: [], players: [...players.sort(comparePlayers).map(toRow), ...raw] }];

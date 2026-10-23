@@ -3,7 +3,7 @@
  * Field names vary between ElDewrito versions, so each accessor tries the known aliases.
  */
 
-import { teamColor, toTeamIndex } from '@/lib/teams';
+import { PLAYER_ROW_COLOR, teamColor, toTeamIndex } from '@/lib/teams';
 
 export type PlayerLike = Record<string, unknown>;
 
@@ -121,7 +121,7 @@ export function playerColor(p: PlayerLike, teamsEnabled: boolean): string {
     const v = p.primaryColor ?? p.primary_color ?? p.color ?? p.colorPrimary ?? p.primaryColour ?? p.primary_colour ?? null;
 
     if (!v) {
-        return '#424242';
+        return PLAYER_ROW_COLOR;
     }
 
     if (Array.isArray(v) && v.length >= 3) {

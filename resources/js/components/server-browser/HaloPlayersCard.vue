@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Scoreboard from '@/components/server-browser/Scoreboard.vue';
 import { groupBy, sortGroups, type ScoreboardGroup, type ScoreboardPlayer } from '@/lib/scoreboard';
-import { TEAM_NAMES, teamColor, toTeamIndex } from '@/lib/teams';
+import { GAMESPY_PLAYER_ROW_COLOR, TEAM_NAMES, teamColor, toTeamIndex } from '@/lib/teams';
 import { computed, h } from 'vue';
 
 /**
@@ -55,7 +55,7 @@ const byScore = (a: Player, b: Player) => b.score - a.score;
 const toRow = (p: Player): ScoreboardPlayer => ({
     cell: h('div', { class: 'player-cell' }, h('div', { class: 'player-info' }, h('span', { class: 'player-name' }, p.name))),
     stats: [p.score],
-    color: teamsEnabled.value ? teamColor(p.team) : '#666666',
+    color: teamsEnabled.value ? teamColor(p.team) : GAMESPY_PLAYER_ROW_COLOR,
 });
 
 const groups = computed<ScoreboardGroup[]>(() => {

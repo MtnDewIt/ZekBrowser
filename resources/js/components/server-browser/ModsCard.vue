@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePopoverToggle } from '@/composables/usePopoverToggle';
 import type { ElDewritoMod } from '@/models/ElDewritoServer';
 import { computed } from 'vue';
-import '../../../css/ModsCard.css';
 
 const props = defineProps<{
     mods?: ElDewritoMod[];
@@ -102,3 +101,22 @@ function formatSize(bytes: number | undefined): string {
         </div>
     </ClickPopover>
 </template>
+
+<style>
+.mods-card .mod-entry {
+    padding: 0;
+}
+
+.mods-card .mod-version {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--muted-foreground);
+    padding: 0.1rem 0.4rem;
+    border-radius: 9999px;
+    background: var(--muted);
+    line-height: 1.3;
+}
+</style>

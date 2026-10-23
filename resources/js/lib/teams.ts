@@ -1,5 +1,11 @@
 export const TEAM_COLORS = ['#9b3332', '#325992', '#1F3602', '#BC4D00', '#1D1052', '#A77708', '#1C0D02', '#FF4D8A'];
 
+/** Scoreboard row background when a player has no team colour. */
+export const PLAYER_ROW_COLOR = '#424242';
+
+/** GameSpy scoreboards use a lighter neutral row. */
+export const GAMESPY_PLAYER_ROW_COLOR = '#666666';
+
 export const TEAM_NAMES = ['Red', 'Blue', 'Green', 'Orange', 'Purple', 'Gold', 'Brown', 'Pink'];
 
 export function teamColor(team: number | null | undefined, fallback = 'transparent'): string {
