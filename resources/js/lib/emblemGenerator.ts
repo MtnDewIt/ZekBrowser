@@ -1,3 +1,5 @@
+import { reactive } from 'vue';
+
 type RGB = 
 { 
 	r: number; 
@@ -218,7 +220,7 @@ export default async function generateEmblem(emblem: string): Promise<string>
 			await colorPixelsOnCanvas(bgImg, ctx, data.backgroundColor, ColorPolicy.KeepEven, 101);
 		}
 	} 
-	catch (e) 
+	catch
 	{
 		// ignore background load errors
 	}
@@ -254,7 +256,7 @@ export default async function generateEmblem(emblem: string): Promise<string>
 			await colorPixelsOnCanvas(fgImg, ctx, data.primaryColor, ColorPolicy.KeepEven, 177);
 	  	}
 	} 
-	catch (e) 
+	catch
 	{
 		// ignore foreground load errors
 	}	
@@ -262,4 +264,43 @@ export default async function generateEmblem(emblem: string): Promise<string>
 	const dataUrl = canvas.toDataURL('image/png');
 	cache.set(emblem, dataUrl);
 	return dataUrl;
+}
+
+const DEFAULT_EMBLEM = '/assets/emblems/default.png';
+
+// Rendered emblem data URLs, shared by every scoreboard on the page.
+const renderedEmblems = reactive(new Map<string, string>());
+
+/**
+ * Render the emblem in the background (once). Already-usable URLs are used as-is.
+ */
+export async function ensureEmblem(emblem: string | null | undefined): Promise<void>
+{
+	if (!emblem || renderedEmblems.has(emblem))
+	{
+		return;
+	}
+
+	renderedEmblems.set(emblem, '');
+
+	if (/^(data:|https?:\/\/|\/)/.test(emblem))
+	{
+		renderedEmblems.set(emblem, emblem);
+		return;
+	}
+
+	try
+	{
+		renderedEmblems.set(emblem, await generateEmblem(emblem));
+	}
+	catch
+	{
+		// keep the placeholder
+	}
+}
+
+/** The rendered emblem URL, or the default emblem until it is ready. */
+export function emblemSrc(emblem: string | null | undefined): string
+{
+	return (emblem && renderedEmblems.get(emblem)) || DEFAULT_EMBLEM;
 }

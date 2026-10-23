@@ -1,315 +1,190 @@
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue';
-import UnicodeText from '@/components/UnicodeText.vue';
 import DataTable from '@/components/server-browser/DataTable.vue';
-import { Button } from '@/components/ui/button';
+import UnicodeText from '@/components/UnicodeText.vue';
+import { fetchJson, listUrl, type ServerListResponse } from '@/lib/api';
+import { makeSortHeader } from '@/lib/tableHeaders';
 import type { ColumnDef } from '@tanstack/vue-table';
+import { computed, h, onMounted, ref } from 'vue';
 
-interface CartoServer 
-{
-  xuid?: string | number;
-  server_name?: string;
-  map_name?: string;
-  map_id?: number | string;
-  gametype?: string;
-  variant?: string;
-  players?: { filled?: number; max?: number };
-  description?: string;
-  decoded_properties?: any;
+const props = withDefaults(defineProps<{ apiBase?: string }>(), { apiBase: '/api/' });
+
+interface CartoServer {
+    xuid?: string | number;
+    server_name: string;
+    map_name: string;
+    map_id?: number | string | null;
+    gametype: string;
+    variant: string;
+    players: { filled?: number | null; max?: number | null };
+    description: string;
 }
 
 const servers = ref<CartoServer[]>([]);
-const loading = ref(false);
 const error = ref<string | null>(null);
 
-// list copied from MAP_ID_TO_INFO
-const KNOWN_MAP_IDS = new Set([1,101,105,301,305,401,405,501,505,601,605,701,801,705,805,80,1201,100,60,110,70,1300,10,1302,1400,3001,1200,1001,120,1002,800,1402,50,20,444678,91101,1101,1000,1109,40,30]);
+// Stock Halo 2 map ids (mirrors MAP_ID_TO_INFO in server.py); anything else is a custom map.
+const KNOWN_MAP_IDS = new Set([
+    1, 101, 105, 301, 305, 401, 405, 501, 505, 601, 605, 701, 801, 705, 805, 80, 1201, 100, 60, 110, 70, 1300, 10, 1302, 1400, 3001, 1200, 1001, 120,
+    1002, 800, 1402, 50, 20, 444678, 91101, 1101, 1000, 1109, 40, 30,
+]);
 
-const SORT_ICON_BASE = 'icon-mask inline-block w-3.5 h-3.5 ml-2 align-middle opacity-70';
+function isCustomMap(server: CartoServer): boolean {
+    const id = server.map_id;
 
-const renderSortIcon = (state: false | 'asc' | 'desc') => 
-{
-  const variant = state === 'asc' ? 'icon-sort-up' : state === 'desc' ? 'icon-sort-down' : 'icon-sort';
-  return h('span', { class: `${SORT_ICON_BASE} ${variant}`, ariaHidden: 'true' });
-};
-
-const makeSortHeader = (label: string, buttonClass = '') => ({ column }: any) => 
-{
-  const state = column.getIsSorted();
-
-  return h(Button,
-    {
-      variant: 'ghost',
-      class: ['gap-1', buttonClass].filter(Boolean).join(' '),
-      style: 'padding-left: 0.5rem; padding-right: 1.25rem; margin-left: -0.5rem;',
-      onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-    },
-    () => [label, renderSortIcon(state)]
-  );
-};
-
-const columns: ColumnDef<CartoServer>[] = 
-[
-  // {
-  //   accessorKey: 'xuid',
-  //   header: makeSortHeader('XUID'),
-  //   cell: ({ row }) => {
-  //     const val = row.getValue('xuid');
-  //     if (val === null || typeof val === 'undefined' || String(val).trim() === '') {
-  //       return h('span', { class: 'tabular-nums text-sm' }, '—');
-  //     }
-  //     const url = `/api/cartographer/servers/${encodeURIComponent(String(val))}`;
-  //     return h('a', {
-  //       href: url,
-  //       target: '_blank',
-  //       rel: 'noopener noreferrer',
-  //       title: 'View JSON data',
-  //       class: 'tabular-nums text-sm text-link hover:underline'
-  //     }, String(val));
-  //   }
-  // },
-  { 
-    accessorKey: 'server_name', 
-    header: makeSortHeader('Server'), 
-    cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [ 
-      h('span', { class: 'font-bold!' }, h(UnicodeText, { text: row.getValue('server_name') })) 
-    ]) 
-  },
-
-  { 
-    accessorKey: 'map_name', 
-    header: makeSortHeader('Map'), 
-    cell: ({ row }) => h(UnicodeText, { text: row.getValue('map_name') }) 
-  },
-
-  {
-    id: 'custom_map',
-    accessorFn: (row: any) => 
-    {
-      let mid: any = row.map_id;
-
-      if (mid !== null && mid !== undefined && String(mid).trim() !== '') 
-      {
-        const midNum = Number(mid);
-
-        return (!Number.isNaN(midNum) && KNOWN_MAP_IDS.has(midNum)) ? 0 : 1;
-      }
-      // unknown map id -> treat as custom
-      return 1;
-    },
-    header: ({ column }: any) => 
-    {
-      const state = column.getIsSorted();
-
-      const icon = h('span', {
-        class: 'icon-mask icon-download-b inline-block w-4 h-4 leading-none text-muted-foreground relative top-[2px]',
-        ariaHidden: 'true',
-      });
-
-      return h(Button,
-        {
-          variant: 'ghost',
-          class: 'gap-0',
-          style: 'padding-left: 0.5rem; padding-right: 1.25rem; margin-left: -0.5rem;',
-          onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-          title: 'Custom Map',
-        },
-        () => [
-          h('span', { class: 'inline-flex items-center' }, [icon, renderSortIcon(state)])
-        ]
-      );
-    },
-    // Show icon only when the server's map id is NOT one of the known MAP_ID_TO_INFO ids
-    cell: ({ row }) => 
-    {
-      const original = row.original || {} as any;
-
-      let mid: any = original.map_id;
-
-      if (mid !== null && mid !== undefined && String(mid).trim() !== '') 
-      {
-        const midNum = Number(mid);
-
-        if (!Number.isNaN(midNum) && KNOWN_MAP_IDS.has(midNum)) 
-        {
-          return h('span', { class: 'block w-4 h-4' }, '');
-        }
-      }
-
-      return h('span', { class: 'block w-4 h-4 leading-none text-muted-foreground icon-mask icon-download-b', title: 'Custom Map' });
-    },
-  },
-  
-  { 
-    accessorKey: 'gametype', 
-    header: makeSortHeader('Gametype'), 
-    cell: ({ row }) => h(UnicodeText, { text: row.getValue('gametype') }) 
-  },
-  
-  { 
-    accessorKey: 'variant', 
-    header: makeSortHeader('Variant'), 
-    cell: ({ row }) => h(UnicodeText, { text: row.getValue('variant') }) 
-  },
-  
-  { 
-    id: 'players', 
-    accessorFn: (row) => 
-    {
-      const p = row.players;
-
-      if (p && typeof p === 'object')
-      {
-        return Number(p.filled ?? 0);
-      }
-
-      if (typeof p === 'number')
-      {
-        return Number(p);
-      }
-
-      return 0;
-    }, 
-    header: makeSortHeader('Players'), 
-    cell: ({ row }) => 
-    {
-      const original = row.original || {} as any;
-      const p = original.players;
-      
-      let filled: any = '?';
-      let max: any = '?';
-      
-      if (p && typeof p === 'object') 
-      {
-        filled = (typeof p.filled !== 'undefined' && p.filled !== null) ? p.filled : '?';
-        max = (typeof p.max !== 'undefined' && p.max !== null) ? p.max : '?';
-      }
-      
-      return `${filled}/${max}`;
+    if (id === null || id === undefined || String(id).trim() === '') {
+        return true;
     }
-  },
-  
-  { 
-    accessorKey: 'description', 
-    header: makeSortHeader('Description'), 
-    cell: ({ row }) => h(UnicodeText, { text: row.getValue('description') || '—', stripUnicode: true }) 
-  },
-];
 
-async function load() {
-  loading.value = true;
-  error.value = null;
-  // Don't clear `servers` immediately — keep the existing list visible
-  // while we fetch new data to avoid a jarring disappearance.
-  const newServers: CartoServer[] = [];
-  
-  try 
-  {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    
-    // Use the new unified API endpoint
-    const res = await fetch('/api/cartographer/list', { signal: controller.signal });
-    clearTimeout(timeout);
-    
-    if (!res.ok) throw new Error(res.statusText || 'Network error');
-    
-    const data = await res.json();
-    
-    // The API now returns a structured response with servers array
-    let serverList = [];
-    
-    if (data.servers && Array.isArray(data.servers)) 
-    {
-      serverList = data.servers;
-    } 
-    else if (Array.isArray(data)) 
-    {
-      serverList = data;
-    }
-    
-    // Map the servers to our interface and only replace the visible
-    // `servers` after successful fetch so the UI remains stable.
-    newServers.push(...serverList.map((item: any) => ({
-      xuid: item.xuid,
-      server_name: item.server_name || '',
-      map_id: item.map_id,
-      map_name: item.map_name || '',
-      variant: item.variant || '',
-      gametype: item.gametype || '',
-      players: item.players || { filled: undefined, max: undefined },
-      description: item.description || '',
-      decoded_properties: item.decoded_properties,
-    } as CartoServer)));
-    
-    // Swap in the new server list once ready.
-    servers.value = newServers;
-    
-  } 
-  catch (err: any) 
-  {
-    error.value = err?.message ?? String(err);
-    console.warn('Cartographer load failed:', err);
-  } 
-  finally 
-  {
-    loading.value = false;
-  }
+    const n = Number(id);
+
+    return Number.isNaN(n) || !KNOWN_MAP_IDS.has(n);
 }
 
-onMounted(() => load());
+function filledPlayers(server: CartoServer): number {
+    return Number(server.players?.filled ?? 0);
+}
 
-// Expose the loader so parent can trigger refresh
+const totalPlayers = computed(() => servers.value.reduce((sum, s) => sum + filledPlayers(s), 0));
+
+const searchOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Server', value: 'server' },
+    { label: 'Map', value: 'map' },
+    { label: 'Gametype', value: 'gametype' },
+    { label: 'Variant', value: 'variant' },
+    { label: 'Description', value: 'description' },
+];
+
+const columns: ColumnDef<CartoServer>[] = [
+    {
+        accessorKey: 'server_name',
+        header: makeSortHeader('Server'),
+        cell: ({ row }) =>
+            h('div', { class: 'md:whitespace-nowrap' }, [h('span', { class: 'font-bold!' }, h(UnicodeText, { text: row.original.server_name }))]),
+    },
+    {
+        accessorKey: 'map_name',
+        header: makeSortHeader('Map'),
+        cell: ({ row }) => h(UnicodeText, { text: row.original.map_name }),
+    },
+    {
+        id: 'custom_map',
+        accessorFn: (row) => (isCustomMap(row) ? 1 : 0),
+        header: makeSortHeader(
+            h('span', { class: 'inline-flex items-center' }, [
+                h('span', {
+                    class: 'icon-mask icon-download-b inline-block w-4 h-4 leading-none text-muted-foreground relative top-[2px]',
+                    ariaHidden: 'true',
+                }),
+            ]),
+            { title: 'Custom Map', buttonClass: 'gap-0' },
+        ),
+        cell: ({ row }) =>
+            isCustomMap(row.original)
+                ? h('span', { class: 'block w-4 h-4 leading-none text-muted-foreground icon-mask icon-download-b', title: 'Custom Map' })
+                : h('span', { class: 'block w-4 h-4' }, ''),
+    },
+    {
+        accessorKey: 'gametype',
+        header: makeSortHeader('Gametype'),
+        cell: ({ row }) => h(UnicodeText, { text: row.original.gametype }),
+    },
+    {
+        accessorKey: 'variant',
+        header: makeSortHeader('Variant'),
+        cell: ({ row }) => h(UnicodeText, { text: row.original.variant }),
+    },
+    {
+        id: 'players',
+        accessorFn: (row) => filledPlayers(row),
+        header: makeSortHeader('Players'),
+        cell: ({ row }) => `${row.original.players?.filled ?? '?'}/${row.original.players?.max ?? '?'}`,
+    },
+    {
+        accessorKey: 'description',
+        header: makeSortHeader('Description'),
+        cell: ({ row }) => h(UnicodeText, { text: row.original.description || '—', stripUnicode: true }),
+    },
+];
+
+interface CartoServerRaw {
+    xuid?: string | number;
+    server_name?: string;
+    map_name?: string;
+    map_id?: number | string | null;
+    gametype?: string;
+    variant?: string;
+    players?: { filled?: number | null; max?: number | null } | number;
+    description?: string;
+}
+
+function toCartoServer(item: CartoServerRaw): CartoServer {
+    return {
+        xuid: item.xuid,
+        server_name: item.server_name || '',
+        map_id: item.map_id,
+        map_name: item.map_name || '',
+        variant: item.variant || '',
+        gametype: item.gametype || '',
+        players: item.players && typeof item.players === 'object' ? item.players : { filled: undefined, max: undefined },
+        description: item.description || '',
+    };
+}
+
+/** Fetch the list. The current rows stay visible until the new ones arrive. */
+async function load(): Promise<void> {
+    error.value = null;
+
+    try {
+        const data = await fetchJson<ServerListResponse<CartoServerRaw[]> | CartoServerRaw[]>(listUrl(props.apiBase, 'cartographer'));
+        const list = Array.isArray(data) ? data : Array.isArray(data.servers) ? data.servers : [];
+
+        servers.value = list.map(toCartoServer);
+    } catch (err) {
+        error.value = err instanceof Error ? err.message : String(err);
+        console.warn('Cartographer load failed:', err);
+    }
+}
+
+onMounted(() => void load());
+
 defineExpose({ load });
 </script>
 
 <template>
-  <div class="carto-browser">
-    <div v-if="error" class="text-red-500">{{ error }}</div>
+    <div class="carto-browser">
+        <div v-if="error" class="text-red-500">{{ error }}</div>
 
-    <DataTable 
-      :columns="columns" 
-      :data="servers" 
-      :searchOptions="[
-        { label: 'All', value: 'all' }, 
-        { label: 'Server', value: 'server' }, 
-        { label: 'Map', value: 'map' }, 
-        { label: 'Gametype', value: 'gametype' }, 
-        { label: 'Variant', value: 'variant' }, 
-        { label: 'Description', value: 'description' }
-      ]" 
-      :initialSorting="[{ id: 'players', desc: true }]"
-      :players="(servers || []).reduce((acc, s) => acc + (s?.players && typeof s.players === 'object' ? Number(s.players.filled ?? 0) : 0), 0)"
-      :servers="(servers || []).length"
-    >
-      <template #left>
-        <slot name="left" />
-      </template>
-      <template #mobile-card="{ row }">
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0 flex-1">
-            <div class="font-bold text-sm text-foreground truncate"><UnicodeText :text="row.server_name || '—'" /></div>
-            <div class="text-xs text-muted-foreground mt-0.5">
-              <UnicodeText :text="row.map_name || ''" />
-              <span v-if="row.gametype" class="ml-1">· <UnicodeText :text="row.gametype" /></span>
-            </div>
-          </div>
-          <span class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0">
-            {{ row.players?.filled ?? '?' }}/{{ row.players?.max ?? '?' }}
-          </span>
-        </div>
-        <div v-if="row.variant || row.description" class="text-xs text-muted-foreground mt-1.5 truncate">
-          <UnicodeText v-if="row.variant" :text="row.variant" />
-          <span v-if="row.variant && row.description"> · </span>
-          <UnicodeText v-if="row.description" :text="row.description" :stripUnicode="true" />
-        </div>
-      </template>
-    </DataTable>
-
-    <!-- loading indicator intentionally removed so search and selector remain visible -->
-  </div>
+        <DataTable
+            :columns="columns"
+            :data="servers"
+            :search-options="searchOptions"
+            :initial-sorting="[{ id: 'players', desc: true }]"
+            :players="totalPlayers"
+            :servers="servers.length"
+        >
+            <template #left>
+                <slot name="left" />
+            </template>
+            <template #mobile-card="{ row }">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate text-sm font-bold text-foreground"><UnicodeText :text="row.server_name || '—'" /></div>
+                        <div class="mt-0.5 text-xs text-muted-foreground">
+                            <UnicodeText :text="row.map_name" />
+                            <span v-if="row.gametype" class="ml-1">· <UnicodeText :text="row.gametype" /></span>
+                        </div>
+                    </div>
+                    <span class="flex-shrink-0 text-sm font-semibold text-foreground tabular-nums">
+                        {{ row.players?.filled ?? '?' }}/{{ row.players?.max ?? '?' }}
+                    </span>
+                </div>
+                <div v-if="row.variant || row.description" class="mt-1.5 truncate text-xs text-muted-foreground">
+                    <UnicodeText v-if="row.variant" :text="row.variant" />
+                    <span v-if="row.variant && row.description"> · </span>
+                    <UnicodeText v-if="row.description" :text="row.description" :strip-unicode="true" />
+                </div>
+            </template>
+        </DataTable>
+    </div>
 </template>
-
-<style scoped>
-/* minimal overrides – styling now comes from DataTable card wrapper */
-</style>

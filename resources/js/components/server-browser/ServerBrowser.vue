@@ -1,226 +1,82 @@
 <script setup lang="ts">
-
-import type { ElDewritoServer } from '@/models/ElDewritoServer';
+import BrowserSelect from '@/components/server-browser/BrowserSelect.vue';
+import CartographerBrowser from '@/components/server-browser/CartographerBrowser.vue';
 import DataTable from '@/components/server-browser/DataTable.vue';
+import HaloPlayersCard from '@/components/server-browser/HaloPlayersCard.vue';
 import ModsCard from '@/components/server-browser/ModsCard.vue';
 import PlayersCard from '@/components/server-browser/PlayersCard.vue';
-import HaloPlayersCard from '@/components/server-browser/HaloPlayersCard.vue';
-import CartographerBrowser from '@/components/server-browser/CartographerBrowser.vue';
-import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { h, ref, watch, onMounted } from 'vue';
+import { ValidationError } from '@/exceptions/ValidationError';
+import { fetchJson, isBrowserType, listUrl, type BrowserType, type ServerListResponse } from '@/lib/api';
+import { makeSortHeader } from '@/lib/tableHeaders';
+import { ElDewritoServer, type ElDewritoServerData } from '@/models/ElDewritoServer';
 import type { ColumnDef } from '@tanstack/vue-table';
+import { computed, h, onMounted, ref, watch } from 'vue';
 
-interface Props 
-{
-    servers: ElDewritoServer[];
-}
-
-const SORT_ICON_BASE = 'icon-mask inline-block w-3.5 h-3.5 ml-2 align-middle opacity-70';
-
-const props = defineProps<Props>();
-
-const STORAGE_KEY = 'zekbrowser.serverBrowser';
-const selected = ref('eldewrito');
-onMounted(() => {
-    try {
-        const v = localStorage.getItem(STORAGE_KEY);
-        if (v === 'cartographer' || v === 'eldewrito' || v === 'haloce' || v === 'halopc') selected.value = v;
-    } catch (e) {
-        // ignore (e.g., unavailable in some environments)
-    }
-    // notify parent which browser is currently selected so parent
-    // can sync stats view on initial load
-    try { emit('browser-change', selected.value); } catch (e) { /* ignore */ }
-
-    // emit initial counts for the active browser
-    if (selected.value === 'cartographer') {
-        fetchCartoCounts();
-    } else if (selected.value === 'haloce' || selected.value === 'halopc') {
-        // initial load for Halo browsers
-        try { void loadHaloServers(selected.value as 'haloce' | 'halopc'); } catch (e) { }
-    } else {
-        try {
-            const srv = Array.isArray(props.servers) ? props.servers : [];
-            let players = 0;
-            for (const s of srv) players += Number(s.numPlayers || 0);
-            const servcount = srv.length;
-            currentPlayers.value = players;
-            currentServers.value = servcount;
-            emit('counts', { players, servers: servcount });
-        } catch (e) { }
-    }
-});
-watch(selected, (v) => {
-    try { localStorage.setItem(STORAGE_KEY, v); } catch (e) { }
-    emit('browser-change', v);
-    if (v === 'cartographer') {
-        fetchCartoCounts();
-    } else {
-        // For non-Cartographer (ElDewrito / Halo CE) compute counts from
-        // parent-provided `props.servers` for now (no API hookup yet).
-        try {
-            const srv = Array.isArray(props.servers) ? props.servers : [];
-            let players = 0;
-            for (const s of srv) players += Number(s.numPlayers || 0);
-            const servcount = srv.length;
-            currentPlayers.value = players;
-            currentServers.value = servcount;
-            emit('counts', { players, servers: servcount });
-        } catch (e) { /* ignore */ }
-    }
-});
-
-// update elderwrito counts when parent servers prop changes
-watch(() => props.servers, (val) => {
-    if (selected.value === 'eldewrito' || selected.value === 'haloce' || selected.value === 'halopc') {
-        try {
-            const srv = Array.isArray(val) ? val : [];
-            let players = 0;
-            for (const s of srv) players += Number(s.numPlayers || 0);
-            const servcount = srv.length;
-            currentPlayers.value = players;
-            currentServers.value = servcount;
-            emit('counts', { players, servers: servcount });
-        } catch (e) { }
-    }
-}, { deep: true });
-const cartoRef = ref(null as any);
-
-const currentPlayers = ref<number>(0);
-const currentServers = ref<number>(0);
-
-// Halo CE placeholder search state (UI-only for now)
-const haloSearch = ref('');
-const haloSearchMode = ref('all');
-const haloSearchOptions = [
-    { label: 'All', value: 'all' },
-    { label: 'Server Name', value: 'name' },
-];
-
-const emit = defineEmits<{
-    (e: 'counts', payload: { players: number; servers: number }): void,
-    (e: 'counts-loading', val: boolean): void,
-    (e: 'browser-change', browserType: 'eldewrito' | 'cartographer' | 'haloce' | 'halopc'): void,
+const props = defineProps<{
+    /** Base URL of the JSON API, e.g. "/api/". */
+    apiBase: string;
 }>();
 
-async function fetchCartoCounts() {
-    emit('counts-loading', true);
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-        const res = await fetch('/api/cartographer/list');
-        clearTimeout(timeout);
-        if (!res.ok) throw new Error('Network');
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.servers && Array.isArray(data.servers) ? data.servers : []);
-        let serversNum = list.length;
-        let playersNum = 0;
-        for (const s of list) {
-            const p = s.players;
-            if (p && typeof p === 'object') playersNum += Number(p.filled ?? 0);
-            else if (typeof p === 'number') playersNum += Number(p);
+const emit = defineEmits<{
+    (e: 'browser-change', type: BrowserType): void;
+}>();
+
+const STORAGE_KEY = 'zekbrowser.serverBrowser';
+
+const selected = ref<BrowserType>('eldewrito');
+const cartoRef = ref<InstanceType<typeof CartographerBrowser> | null>(null);
+
+// --- ElDewrito ---------------------------------------------------------------
+
+const eldewritoServers = ref<ElDewritoServer[]>([]);
+
+const eldewritoPlayers = computed(() => eldewritoServers.value.reduce((sum, s) => sum + (Number(s.numPlayers) || 0), 0));
+
+async function loadEldewrito(): Promise<void> {
+    const data = await fetchJson<ServerListResponse<Record<string, Omit<ElDewritoServerData, 'ip'>>>>(listUrl(props.apiBase, 'eldewrito'));
+    const list: ElDewritoServer[] = [];
+
+    for (const [ip, server] of Object.entries(data.servers ?? {})) {
+        try {
+            list.push(new ElDewritoServer({ ip, ...server }));
+        } catch (error) {
+            if (error instanceof ValidationError) {
+                console.warn(`Validation failed for ${ip}:`, error.errors);
+            } else {
+                console.error(`Unexpected error for server ${ip}:`, error);
+            }
         }
-        currentPlayers.value = playersNum;
-        currentServers.value = serversNum;
-        emit('counts', { players: playersNum, servers: serversNum });
-    } catch (e) {
-        // ignore
-    } finally {
-        emit('counts-loading', false);
     }
+
+    eldewritoServers.value = list;
 }
 
-async function refresh() {
-    if (selected.value === 'cartographer' && cartoRef.value && typeof cartoRef.value.load === 'function') {
-        await cartoRef.value.load();
-        await fetchCartoCounts();
-        return true;
-    }
-    if (selected.value === 'haloce' || selected.value === 'halopc') {
-        await loadHaloServers(selected.value as 'haloce' | 'halopc');
-        return true;
-    }
-    return false;
-}
-
-defineExpose({ refresh, getSelection: () => selected.value });
-
-const renderSortIcon = (state: false | 'asc' | 'desc') => 
-{
-    const variant = state === 'asc' ? 'icon-sort-up' : state === 'desc' ? 'icon-sort-down' : 'icon-sort';
-    return h('span', { class: `${SORT_ICON_BASE} ${variant}`, ariaHidden: 'true' });
-};
-
-const makeSortHeader = (label: string, buttonClass = '') => ({ column }) => 
-{
-    const state = column.getIsSorted();
-
-    return h(Button, 
-    {
-        variant: 'ghost',
-        class: ['gap-1', buttonClass].filter(Boolean).join(' '),
-        style: 'padding-left: 0.5rem; padding-right: 1.25rem; margin-left: -0.5rem;',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-    }, 
-    () => [label, renderSortIcon(state)]);
-};
-
-const columns: ColumnDef<ElDewritoServer>[] = 
-[
+const eldewritoColumns: ColumnDef<ElDewritoServer>[] = [
     {
         id: 'passworded',
         accessorFn: (row) => (row.passworded ? 1 : 0),
-        header: ({ column }) => 
-        {
-            const state = column.getIsSorted();
-            const icon = h('span', 
-            {
-                class: 'w-5 h-5 leading-none text-muted-foreground icon-mask icon-lock',
-                ariaHidden: 'true',
-            });
-
-            return h(Button, 
-            {
-                variant: 'ghost',
-                class: 'gap-1',
-                style: 'padding-left: 0.5rem; padding-right: 0.5rem; margin-left: -0.5rem;',
-                onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-                title: 'Sort by password protection',
-            }, 
-            () => [icon, renderSortIcon(state)])
-        },
-        cell: ({ row }) => 
-        {
-            const server: ElDewritoServer = row.original;
-
-            if (!server.passworded) 
-            {
-                return h('span', { class: 'block w-5 h-5' });
-            }
-
-            return h('span', 
-                {
-                    class: 'block w-5 h-5 leading-none text-muted-foreground icon-mask icon-lock',
-                    ariaHidden: 'true',
-                    title: 'Password protected',
-                }
-            );
-        },
+        header: makeSortHeader(h('span', { class: 'w-5 h-5 leading-none text-muted-foreground icon-mask icon-lock', ariaHidden: 'true' }), {
+            title: 'Sort by password protection',
+            paddingRight: '0.5rem',
+        }),
+        cell: ({ row }) =>
+            row.original.passworded
+                ? h('span', {
+                      class: 'block w-5 h-5 leading-none text-muted-foreground icon-mask icon-lock',
+                      ariaHidden: 'true',
+                      title: 'Password protected',
+                  })
+                : h('span', { class: 'block w-5 h-5' }),
     },
     {
         accessorKey: 'name',
         header: makeSortHeader('Server'),
-        cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, 
-        [
-            h('span', { class: 'font-bold!' }, row.getValue('name')),
-        ]),
+        cell: ({ row }) => h('div', { class: 'md:whitespace-nowrap' }, [h('span', { class: 'font-bold!' }, row.original.name)]),
     },
     {
         accessorKey: 'hostPlayer',
         header: makeSortHeader('Host'),
-        cell: ({ row }) => row.getValue('hostPlayer'),
+        cell: ({ row }) => row.original.hostPlayer,
     },
     {
         id: 'status',
@@ -229,35 +85,26 @@ const columns: ColumnDef<ElDewritoServer>[] =
         cell: ({ row }) => row.original.statusFormatted(),
     },
     {
-        accessorKey: 'mods',
+        id: 'mods',
         header: makeSortHeader('Mods'),
         accessorFn: (row) => row.mods?.length ?? 0,
-        cell: ({ row }) => 
-        {
+        cell: ({ row }) => {
             const mods = row.original.mods;
 
-            if (!mods || mods.length === 0) 
-            {
+            if (!mods || mods.length === 0) {
                 return 0;
             }
 
-            return h(ModsCard, 
-            {
-                mods: mods,
-                jsonUrl: `http://${row.original.ip}/mods`,
-                showAsNumber: true,
-            });
+            return h(ModsCard, { mods, jsonUrl: `http://${row.original.ip}/mods`, showAsNumber: true });
         },
     },
     {
         accessorKey: 'numPlayers',
         header: makeSortHeader('Players'),
-        cell: ({ row }) => 
-        {
-            const server: ElDewritoServer = row.original;
+        cell: ({ row }) => {
+            const server = row.original;
 
-            return h(PlayersCard, 
-            {
+            return h(PlayersCard, {
                 numPlayers: server.numPlayers,
                 maxPlayers: server.maxPlayers,
                 players: server.players,
@@ -275,261 +122,272 @@ const columns: ColumnDef<ElDewritoServer>[] =
     },
     {
         accessorKey: 'ip',
-        header: makeSortHeader('IP', 'text-left'),
-        cell: ({ row }) => 
-        {
+        header: makeSortHeader('IP', { buttonClass: 'text-left' }),
+        cell: ({ row }) => {
             const server = row.original;
 
-            return h('span', { class: 'inline-flex items-center whitespace-nowrap' },
-                [
-                    h('a', 
-                    {
-                        href: `eldewrito://${server.ip}`,
-                        target: '_blank',
-                        title: `Click to join ${server.name}`,
-                    }, server.ip),
-                    h(
-                        'a', 
-                        {
-                            href: `http://${server.ip}`,
-                            target: '_blank',
-                            title: `View JSON info`,
-                            class: 'ml-1 inline-flex items-center',
-                        },
-                        h('span', 
-                        {
-                            class: 'icon-mask icon-external inline-block w-4 h-4 opacity-80 align-middle',
-                            ariaHidden: 'true',
-                        })
-                    ),
-                ]
-            );
+            return h('span', { class: 'inline-flex items-center whitespace-nowrap' }, [
+                h('a', { href: `eldewrito://${server.ip}`, target: '_blank', title: `Click to join ${server.name}` }, server.ip),
+                h(
+                    'a',
+                    { href: `http://${server.ip}`, target: '_blank', title: 'View JSON info', class: 'ml-1 inline-flex items-center' },
+                    h('span', { class: 'icon-mask icon-external inline-block w-4 h-4 opacity-80 align-middle', ariaHidden: 'true' }),
+                ),
+            ]);
         },
     },
-]
+];
 
-// Columns for Halo CE / Halo PC server lists (gamespy-style)
-const haloColumns: ColumnDef<any>[] = [
+// --- Halo CE / Halo PC -------------------------------------------------------
+
+type GameSpyInfo = Record<string, string | number | undefined>;
+
+interface HaloServerRaw {
+    address?: string;
+    ip?: string;
+    host?: string;
+    port?: number | string;
+    game?: string;
+    info?: GameSpyInfo;
+    players?: number;
+}
+
+interface HaloServer {
+    address: string;
+    port: number | string;
+    info: GameSpyInfo;
+    players: number;
+    name: string;
+    variant: string;
+    gametype: string;
+    map: string;
+}
+
+const haloServers = ref<HaloServer[]>([]);
+const haloPlayers = ref(0);
+const haloServerCount = ref(0);
+
+function text(value: unknown): string {
+    return value === undefined || value === null ? '' : String(value);
+}
+
+function toHaloServer(s: HaloServerRaw): HaloServer {
+    const info = s.info ?? {};
+
+    return {
+        address: s.address || s.ip || s.host || '',
+        port: s.port || info.port || '',
+        info,
+        players: Number(info.numplayers ?? s.players ?? 0),
+        name: text(info.hostname || info.server_name),
+        variant: text(info.gamevariant || info.game_variant || info.variant),
+        gametype: text(info.gametype || info.gametype_name),
+        map: text(info.mapname || info.map_name || info.map),
+    };
+}
+
+async function loadHalo(type: 'haloce' | 'halopc'): Promise<void> {
+    const data = await fetchJson<ServerListResponse<HaloServerRaw[]>>(listUrl(props.apiBase, type), 10000);
+    const list = Array.isArray(data.servers) ? data.servers.map(toHaloServer) : [];
+
+    haloServers.value = list;
+    haloPlayers.value = Number(data.count?.players ?? list.reduce((sum, s) => sum + s.players, 0));
+    haloServerCount.value = Number(data.count?.servers ?? list.length);
+}
+
+const haloSearchOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Server', value: 'name' },
+    { label: 'Variant', value: 'variant' },
+    { label: 'Gametype', value: 'gametype' },
+    { label: 'Map', value: 'map' },
+];
+
+const haloColumns: ColumnDef<HaloServer>[] = [
     {
         accessorKey: 'name',
         header: makeSortHeader('Server'),
-        cell: ({ row }) => row.getValue('name') || row.original.info?.server_name || row.original.info?.hostname || ''
+        cell: ({ row }) => row.original.name,
     },
     {
         accessorKey: 'map',
         header: makeSortHeader('Map'),
-        cell: ({ row }) => {
-            const info = row.original.info || {};
-            return info.mapname || info.map_name || info.map_name_2 || info.map || '';
-        }
+        cell: ({ row }) => row.original.map,
     },
     {
         accessorKey: 'gametype',
         header: makeSortHeader('Gametype'),
         cell: ({ row }) => {
-            const info = row.original.info || {};
-            const gt = info.gametype_name ?? info.gametype ?? '';
-            if (typeof gt === 'string' && gt.trim().toLowerCase() === 'king') return 'KOTH';
-            return gt || '';
-        }
+            const gt = row.original.gametype;
+
+            return gt.trim().toLowerCase() === 'king' ? 'KOTH' : gt;
+        },
     },
     {
         accessorKey: 'variant',
         header: makeSortHeader('Variant'),
-        cell: ({ row }) => {
-            const info = row.original.info || {};
-            return info.gamevariant || info.game_variant || info.variant || info.variant_name || info.gamevariant || '';
-        }
+        cell: ({ row }) => row.original.variant,
     },
     {
         id: 'players',
         header: makeSortHeader('Players'),
-        // accessor returns a numeric value so sorting works correctly
-        accessorFn: (row) => Number(row.info?.numplayers ?? row.players ?? 0),
-        cell: ({ row }) => {
-            const info = row.original.info || {};
-            const filled = Number(info.numplayers ?? row.original.players ?? 0);
-            const max = Number(info.maxplayers ?? 0);
-            return h(HaloPlayersCard, {
-                numPlayers: filled,
-                maxPlayers: max,
-                info: info,
-            });
-        }
+        accessorFn: (row) => row.players,
+        cell: ({ row }) =>
+            h(HaloPlayersCard, {
+                numPlayers: row.original.players,
+                maxPlayers: Number(row.original.info.maxplayers ?? 0),
+                info: row.original.info,
+            }),
     },
     {
         id: 'ipport',
-        header: makeSortHeader('IP:Port', 'text-left'),
-        cell: ({ row }) => {
-            const ip = row.original.address || row.original.ip || row.original.ipaddr || '';
-            const port = row.original.port || row.original.info?.port || '';
-            return h('span', { class: 'inline-flex items-center whitespace-nowrap' }, [`${ip}:${port}`]);
-        }
+        header: makeSortHeader('IP:Port', { buttonClass: 'text-left' }),
+        cell: ({ row }) => h('span', { class: 'inline-flex items-center whitespace-nowrap' }, [`${row.original.address}:${row.original.port}`]),
     },
 ];
 
-const haloServers = ref<any[]>([]);
-const haloLoading = ref(false);
+// --- Selection & refresh -----------------------------------------------------
 
-async function loadHaloServers(browserType: 'haloce' | 'halopc') {
-    emit('counts-loading', true);
-    haloLoading.value = true;
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-        const res = await fetch(`/api/${browserType}/list`, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (!res.ok) throw new Error('Network');
-        const data = await res.json();
-
-        const list = Array.isArray(data.servers) ? data.servers : (data.servers || []);
-
-        // Map to simplified objects for the DataTable
-        haloServers.value = list.map((s: any) => ({
-            address: s.address || s.ip || s.host || '',
-            port: s.port || (s.info && s.info.port) || '',
-            info: s.info || {},
-            players: s.info?.numplayers || s.players || 0,
-            name: s.info?.hostname || s.info?.server_name || '',
-            variant: s.info?.gamevariant || s.info?.game_variant || s.info?.variant || '',
-            gametype: s.info?.gametype || s.info?.gametype_name || '',
-            map: s.info?.mapname || s.info?.map_name || s.info?.map || '',
-        }));
-
-        // Emit counts if available
-        if (data.count) {
-            currentPlayers.value = Number(data.count.players || 0);
-            currentServers.value = Number(data.count.servers || haloServers.value.length);
-            emit('counts', { players: currentPlayers.value, servers: currentServers.value });
-        }
-    } catch (e) {
-        // ignore
-    } finally {
-        haloLoading.value = false;
-        emit('counts-loading', false);
+/** Reload the active list. The parent calls this from the refresh button and the auto-refresh timer. */
+async function refresh(): Promise<void> {
+    switch (selected.value) {
+        case 'eldewrito':
+            return loadEldewrito();
+        case 'haloce':
+        case 'halopc':
+            return loadHalo(selected.value);
+        case 'cartographer':
+            return cartoRef.value?.load();
     }
 }
 
-// Load halo servers when selection changes to haloce/halopc
-watch(selected, (v) => {
-    if (v === 'haloce' || v === 'halopc') {
-        void loadHaloServers(v as 'haloce' | 'halopc');
+async function safeRefresh(): Promise<void> {
+    try {
+        await refresh();
+    } catch (error) {
+        console.warn(`Failed to load ${selected.value} servers:`, error);
+    }
+}
+
+onMounted(() => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+
+        if (isBrowserType(stored)) {
+            selected.value = stored;
+        }
+    } catch {
+        // localStorage unavailable
+    }
+
+    emit('browser-change', selected.value);
+
+    // CartographerBrowser loads itself on mount; the other lists are loaded here.
+    if (selected.value !== 'cartographer') {
+        void safeRefresh();
     }
 });
 
+watch(selected, (value) => {
+    try {
+        localStorage.setItem(STORAGE_KEY, value);
+    } catch {
+        // ignore
+    }
+
+    emit('browser-change', value);
+
+    if (value !== 'cartographer') {
+        void safeRefresh();
+    }
+});
+
+defineExpose({ refresh, getSelection: () => selected.value });
 </script>
 
 <template>
     <div>
-        <!-- server selector will be rendered into DataTable's `left` slot -->
-
         <div v-if="selected === 'eldewrito'">
-            <DataTable :columns="columns" :data="servers" :players="currentPlayers" :servers="currentServers">
+            <DataTable :columns="eldewritoColumns" :data="eldewritoServers" :players="eldewritoPlayers" :servers="eldewritoServers.length">
                 <template #left>
-                    <Select v-model="selected" class="min-w-[168px]" :options="[
-                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.webp', iconRounded: true },
-                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.webp', iconRounded: true },
-                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.webp', iconRounded: true },
-                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.webp', iconRounded: true },
-                    ]" :full-width-trigger="true">
-                        <template #trigger-content>
-                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.webp" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.webp" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else src="/assets/logos/cartographer.webp" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                        </template>
-                    </Select>
+                    <BrowserSelect v-model="selected" />
                 </template>
                 <template #mobile-card="{ row }">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-1.5">
-                                <span v-if="row.passworded" class="icon-mask icon-lock w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                                <span class="font-bold text-sm text-foreground truncate">{{ row.name }}</span>
+                                <span v-if="row.passworded" class="icon-mask icon-lock h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                                <span class="truncate text-sm font-bold text-foreground">{{ row.name }}</span>
                             </div>
-                            <div class="text-xs text-muted-foreground mt-0.5">
+                            <div class="mt-0.5 text-xs text-muted-foreground">
                                 {{ row.statusFormatted() }}
                                 <span v-if="row.hostPlayer" class="ml-1">· {{ row.hostPlayer }}</span>
                             </div>
                         </div>
                         <PlayersCard
-                            :numPlayers="row.numPlayers"
-                            :maxPlayers="row.maxPlayers"
+                            :num-players="row.numPlayers"
+                            :max-players="row.maxPlayers"
                             :players="row.players"
                             :teams="row.teams"
-                            :teamScores="row.teamScores"
-                            :serverVersion="row.eldewritoVersionShort ?? row.eldewritoVersion ?? ''"
+                            :team-scores="row.teamScores"
+                            :server-version="row.eldewritoVersionShort ?? row.eldewritoVersion ?? ''"
                             :passworded="!!row.passworded"
-                            class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0"
+                            class="flex-shrink-0 text-sm font-semibold text-foreground tabular-nums"
                         />
                     </div>
-                    <div class="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                    <div class="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
                         <span v-if="row.eldewritoVersion">v{{ row.versionWithoutTrailingZero() }}</span>
-                        <span v-if="row.mods?.length" class="inline-flex items-center cursor-pointer" @click.stop="$event.currentTarget.querySelector('.mods-count-button')?.click()">Mods:&nbsp;<ModsCard :mods="row.mods" :jsonUrl="`http://${row.ip}/mods`" :showAsNumber="true" /></span>
+                        <span
+                            v-if="row.mods?.length"
+                            class="inline-flex cursor-pointer items-center"
+                            @click.stop="($event.currentTarget as HTMLElement).querySelector<HTMLElement>('.mods-count-button')?.click()"
+                        >
+                            Mods:&nbsp;<ModsCard :mods="row.mods" :json-url="`http://${row.ip}/mods`" :show-as-number="true" />
+                        </span>
                     </div>
                 </template>
             </DataTable>
         </div>
 
         <div v-else-if="selected === 'haloce' || selected === 'halopc'">
-            <DataTable :columns="haloColumns" :data="haloServers" :players="currentPlayers" :servers="currentServers" :initial-sorting="[{ id: 'players', desc: true }]" :searchOptions="[
-                { label: 'All', value: 'all' },
-                { label: 'Server', value: 'name' },
-                { label: 'Variant', value: 'variant' },
-                { label: 'Gametype', value: 'gametype' },
-                { label: 'Map', value: 'map' },
-            ]">
+            <DataTable
+                :columns="haloColumns"
+                :data="haloServers"
+                :players="haloPlayers"
+                :servers="haloServerCount"
+                :initial-sorting="[{ id: 'players', desc: true }]"
+                :search-options="haloSearchOptions"
+            >
                 <template #left>
-                    <Select v-model="selected" class="min-w-[168px]" :options="[
-                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.webp', iconRounded: true },
-                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.webp', iconRounded: true },
-                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.webp', iconRounded: true },
-                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.webp', iconRounded: true },
-                    ]" :full-width-trigger="true">
-                        <template #trigger-content>
-                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.webp" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.webp" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else src="/assets/logos/cartographer.webp" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                        </template>
-                    </Select>
+                    <BrowserSelect v-model="selected" />
                 </template>
                 <template #mobile-card="{ row }">
                     <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0 flex-1">
-                            <div class="font-bold text-sm text-foreground truncate">{{ row.name || row.info?.hostname || '—' }}</div>
-                            <div class="text-xs text-muted-foreground mt-0.5">
-                                {{ row.map || row.info?.mapname || '' }}
+                            <div class="truncate text-sm font-bold text-foreground">{{ row.name || '—' }}</div>
+                            <div class="mt-0.5 text-xs text-muted-foreground">
+                                {{ row.map }}
                                 <span v-if="row.gametype" class="ml-1">· {{ row.gametype }}</span>
                             </div>
                         </div>
                         <HaloPlayersCard
-                            :numPlayers="Number(row.info?.numplayers ?? row.players ?? 0)"
-                            :maxPlayers="Number(row.info?.maxplayers ?? 0)"
+                            :num-players="row.players"
+                            :max-players="Number(row.info.maxplayers ?? 0)"
                             :info="row.info"
-                            class="text-sm font-semibold tabular-nums text-foreground flex-shrink-0"
+                            class="flex-shrink-0 text-sm font-semibold text-foreground tabular-nums"
                         />
                     </div>
-                    <div v-if="row.variant || row.info?.gamevariant" class="text-xs text-muted-foreground mt-1.5">
-                        {{ row.variant || row.info?.gamevariant }}
+                    <div v-if="row.variant" class="mt-1.5 text-xs text-muted-foreground">
+                        {{ row.variant }}
                     </div>
                 </template>
             </DataTable>
         </div>
 
         <div v-else>
-            <CartographerBrowser ref="cartoRef">
+            <CartographerBrowser ref="cartoRef" :api-base="apiBase">
                 <template #left>
-                    <Select v-model="selected" class="min-w-[168px]" :options="[
-                        { label: 'ElDewrito', value: 'eldewrito', icon: '/assets/logos/eldewrito.webp', iconRounded: true },
-                        { label: 'Cartographer', value: 'cartographer', icon: '/assets/logos/cartographer.webp', iconRounded: true },
-                        { label: 'Halo CE', value: 'haloce', icon: '/assets/logos/haloce.webp', iconRounded: true },
-                        { label: 'Halo PC', value: 'halopc', icon: '/assets/logos/haloce.webp', iconRounded: true },
-                    ]" :full-width-trigger="true">
-                        <template #trigger-content>
-                            <img v-if="selected === 'eldewrito'" src="/assets/logos/eldewrito.webp" alt="ElDewrito" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else-if="selected === 'haloce' || selected === 'halopc'" src="/assets/logos/haloce.webp" alt="Halo" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                            <img v-else src="/assets/logos/cartographer.webp" alt="Cartographer" class="w-5 h-5 mr-2 object-contain rounded-full" />
-                        </template>
-                    </Select>
+                    <BrowserSelect v-model="selected" />
                 </template>
             </CartographerBrowser>
         </div>

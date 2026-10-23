@@ -1,970 +1,237 @@
 <script setup lang="ts">
-
 import ClickPopover from '@/components/ui/click-popover/ClickPopover.vue';
-import generateEmblem from '@/lib/emblemGenerator';
-import { reactive, computed, ref } from 'vue';
+import { usePopoverToggle } from '@/composables/usePopoverToggle';
+import {
+    comparePlayers,
+    isPlayerObject,
+    playerAssists,
+    playerBestStreak,
+    playerCandidateUid,
+    playerColor,
+    playerDeaths,
+    playerEmblem,
+    playerKills,
+    playerName,
+    playerScore,
+    playerServiceTag,
+    playerTeam,
+    type PlayerLike,
+} from '@/lib/eldewritoPlayers';
+import { isVersionAtLeast, playerRank, playerStatsHref, preloadPlayerStats, resolveStatsId } from '@/lib/eldewritoStats';
+import { emblemSrc, ensureEmblem } from '@/lib/emblemGenerator';
+import { TEAM_NAMES, teamColor } from '@/lib/teams';
+import { computed } from 'vue';
 import '../../../css/PlayersCard.css';
 
-interface Props 
-{
+/**
+ * Scoreboard popover for an ElDewrito server.
+ */
+const props = defineProps<{
     numPlayers: number;
     maxPlayers: number;
-    players?: any[];
+    players?: unknown[];
     teams?: boolean | string | number;
     teamScores?: number[];
     serverVersion?: string;
     passworded?: boolean;
-}
+}>();
 
-const props = defineProps<Props>();
-const passworded = computed(() => !!props.passworded);
+const { open, toggle } = usePopoverToggle(() => void preloadPlayerStats(props.players ?? []));
 
-const supportsRanks = computed(() => 
-{
-    if (!props.serverVersion) 
-    {
-        return false;
-    }
+const teamsEnabled = computed(() => {
+    const v = props.teams;
 
-    const match = props.serverVersion.match(/^(\d+)\.(\d+)/);
-
-    if (!match) 
-    {
-        return false;
-    }
-
-    const major = Number.parseInt(match[1]);
-    const minor = Number.parseInt(match[2]);
-
-    return major > 0 || (major === 0 && minor >= 7);
+    return v === true || v === 'true' || v === 1 || v === '1';
 });
 
-const emblemCache = reactive(new Map<string, string>());
-const resolvedStats = reactive(new Map<string, string>());
-const resolvedRanks = reactive(new Map<string, number>());
-const resolvedStatsTimestamps = reactive(new Map<string, number>());
-const resolvedRanksTimestamps = reactive(new Map<string, number>());
+/** Server version from the prop, else from whatever the players report. */
+const serverVersion = computed<string | null>(() => {
+    const fromProp = String(props.serverVersion ?? '').trim();
 
-const CACHE_TTL_MS = 86400000; // 24 hours
-const RANK_CACHE_TTL_MS = 1800000; // 30 minutes
-
-const TEAM_COLORS = 
-[
-    '#9b3332',
-    '#325992',
-    '#1F3602',
-    '#BC4D00',
-    '#1D1052',
-    '#A77708',
-    '#1C0D02',
-    '#FF4D8A',
-];
-
-const TEAM_NAMES = 
-[
-    'Red',
-    'Blue',
-    'Green',
-    'Orange',
-    'Purple',
-    'Gold',
-    'Brown',
-    'Pink',
-];
-
-async function ensureEmblem(emblem: string | null | undefined) 
-{
-    if (!emblem) 
-    {
-        return;
+    if (fromProp) {
+        return fromProp;
     }
 
-    if (emblemCache.has(emblem)) 
-    {
-        return;
-    }
+    for (const p of props.players ?? []) {
+        if (isPlayerObject(p)) {
+            const v = p.eldewritoVersionShort ?? p.eldewritoVersion ?? p.gameVersion;
 
-    emblemCache.set(emblem, '');
-
-    try 
-    {
-        if (typeof emblem === 'string' && (emblem.startsWith('data:') || emblem.startsWith('http://') || emblem.startsWith('https://') || emblem.startsWith('/'))) 
-        {
-            emblemCache.set(emblem, emblem);
-            return;
-        }
-
-        const url = await generateEmblem(emblem);
-
-        emblemCache.set(emblem, url);
-    }
-    catch 
-    {
-        // We could probably catch the exception here
-    }
-}
-
-function getEmblemSrc(emblem: string | null | undefined) 
-{
-    if (!emblem) 
-    {
-        return '';
-    }
-
-    return emblemCache.get(emblem) ?? '';
-}
-
-function getDisplayEmblemSrc(emblem: string | null | undefined) 
-{
-    const src = getEmblemSrc(emblem);
-    return src || '/assets/emblems/default.png';
-}
-
-function getEmblemString(p: any) 
-{
-    if (typeof p !== 'object' || p === null) return null;
-
-    return p.emblem ?? p.emblemUrl ?? p.emblem_url ?? p.emblemString ?? null;
-}
-
-
-function getCandidateUid(p: any): string | null 
-{
-    if (!p || typeof p !== 'object')
-    {
-        return null;
-    }
-
-    const numericFields = [p.id, p.playerId, p.player_id, p.serviceId, p.service_id];
-
-    for (const n of numericFields) 
-    {
-        if (n === undefined || n === null) 
-        {
-            continue;
-        }
-
-        const s = String(n);
-
-        if (/^\d+$/.test(s)) 
-        {
-            return s;
-        }
-    }
-
-    const uidFields = [p.uid, p.uniqueId, p.xuid, p.serviceUid, p.service_uid];
-
-    for (const u of uidFields) 
-    {
-        if (!u) 
-        {
-            continue;
-        }
-
-        if (typeof u === 'string' && /^[0-9a-fA-F]+$/.test(u)) 
-        { 
-            return u;
-        }
-    }
-
-    return null;
-}
-
-async function resolveStatsIdFromUid(uid: string): Promise<string | null> 
-{
-    try 
-    {
-        const now = Date.now();
-        const cached = resolvedStats.get(uid);
-        const ts = resolvedStatsTimestamps.get(uid) ?? 0;
-
-        if (cached && (now - ts) < CACHE_TTL_MS) 
-        {
-            return cached;
-        }
-
-        const resp = await fetch(`/api/servicerecord?uid=${encodeURIComponent(uid)}`);
-
-        if (!resp.ok) 
-        {
-            return null;
-        }
-
-        const data = await resp.json();
-
-        if (!data) 
-        {
-            return null;
-        }
-
-        if (data.id && (typeof data.id === 'number' || typeof data.id === 'string')) 
-        {
-            const s = String(data.id);
-
-            if (/^\d+$/.test(s)) 
-            {
-                resolvedStats.set(uid, s);
-                resolvedStatsTimestamps.set(uid, Date.now());
-
-                if (data.rank !== null && data.rank !== undefined && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) 
-                {
-                    try 
-                    { 
-                        resolvedRanks.set(uid, Number(data.rank));
-                        resolvedRanksTimestamps.set(uid, Date.now());
-                    } 
-                    catch 
-                    {
-                        // We could probably catch the exception here
-                    }
-                }
-                return s;
-            }
-        }
-
-        if (data.player && data.player.id && (typeof data.player.id === 'number' || typeof data.player.id === 'string')) 
-        {
-            const s = String(data.player.id);
-
-            if (/^\d+$/.test(s)) 
-            {
-                resolvedStats.set(uid, s);
-                resolvedStatsTimestamps.set(uid, Date.now());
-
-                if (data.player.rank !== null && data.player.rank !== undefined && (typeof data.player.rank === 'number' || (typeof data.player.rank === 'string' && /^\d+$/.test(String(data.player.rank))))) 
-                {
-                    resolvedRanks.set(uid, Number(data.player.rank));
-                    resolvedRanksTimestamps.set(uid, Date.now());
-                }
-
-                return s;
-            }
-        }
-
-        if (data.rank !== null && data.rank !== undefined && (typeof data.rank === 'number' || (typeof data.rank === 'string' && /^\d+$/.test(String(data.rank))))) 
-        {
-            try 
-            {
-                resolvedRanks.set(uid, Number(data.rank));
-                resolvedRanksTimestamps.set(uid, Date.now());
-            } 
-            catch 
-            {
-                // We could probably catch the exception here
-            }
-        }
-
-        return null;
-    } 
-    catch 
-    {
-        return null;
-    }
-}
-
-async function preloadAllPlayers() 
-{
-    if (!props.players || !Array.isArray(props.players)) 
-    { 
-        return; 
-    }
-
-    const items = props.players.slice();
-    const candidates: string[] = [];
-
-    for (const p of items) 
-    {
-        const c = getCandidateUid(p);
-
-        if (!c) 
-        {
-            continue;
-        }
-
-        if (/^\d+$/.test(c)) 
-        {
-            continue;
-        }
-
-        const ts = resolvedStatsTimestamps.get(c) ?? 0;
-
-        if (resolvedStats.has(c) && (Date.now() - ts) < CACHE_TTL_MS) 
-        {
-            continue;
-        }
-
-        candidates.push(c);
-    }
-
-    const CONCURRENCY = 6;
-
-    for (let i = 0; i < candidates.length; i += CONCURRENCY) 
-    {
-        const batch = candidates.slice(i, i + CONCURRENCY).map(uid => resolveStatsIdFromUid(uid));
-        await Promise.all(batch);
-    }
-}
-
-function getHrefForPlayer(p: any): string 
-{
-    const candidate = getCandidateUid(p);
-
-    if (!candidate) 
-    {
-        return '#';
-    }
-
-    if (/^\d+$/.test(candidate)) 
-    {
-        return `https://stats.eldewrito.org/player/${candidate}`;
-    }
-
-    const resolved = resolvedStats.get(candidate);
-
-    if (resolved) 
-    {
-        return `https://stats.eldewrito.org/player/${resolved}`;
-    }
-
-    return '#';
-}
-
-function getServerVersionString(): string | null 
-{
-    const s = serverVersionProp.value;
-
-    if (s && s.trim() !== '')
-    {
-        return s;
-    }
-
-    if (props.players && Array.isArray(props.players)) 
-    {
-        for (const pp of props.players) 
-        {
-            const v = pp?.eldewritoVersionShort ?? pp?.eldewritoVersion ?? pp?.gameVersion ?? null;
-
-            if (v)
-            {
+            if (v) {
                 return String(v);
             }
         }
     }
 
     return null;
+});
+
+// Ranks and stats-site uids exist from ElDewrito 0.7 on.
+const supportsStats = computed(() => isVersionAtLeast(serverVersion.value, 0, 7));
+
+const objectPlayers = computed(() => (props.players ?? []).filter(isPlayerObject));
+
+interface TeamGroup {
+    team: number | null;
+    players: PlayerLike[];
+    totals: { score: number; kills: number; deaths: number };
 }
 
-async function preloadStatsHref(p: any) 
-{
-    const candidate = getCandidateUid(p);
-
-    if (!candidate) return;
-    if (/^\d+$/.test(candidate)) return;
-
-    const serverVer = getServerVersionString();
-
-    if (!isVersionAtLeast(serverVer, 0, 7)) 
-    {
-        return;
+const groups = computed<TeamGroup[]>(() => {
+    if (!teamsEnabled.value) {
+        return [{ team: null, players: [...objectPlayers.value].sort(comparePlayers), totals: { score: 0, kills: 0, deaths: 0 } }];
     }
 
-    if (resolvedStats.has(candidate))
-    { 
-        return;
+    const byTeam = new Map<number | null, PlayerLike[]>();
+
+    for (const p of objectPlayers.value) {
+        const team = playerTeam(p);
+        byTeam.set(team, [...(byTeam.get(team) ?? []), p]);
     }
 
-    const resolved = await resolveStatsIdFromUid(candidate);
+    const result: TeamGroup[] = [];
 
-    if (resolved)
-    {
-        resolvedStats.set(candidate, resolved);
+    for (const [team, members] of byTeam) {
+        members.sort(comparePlayers);
+
+        const reportedScore = team !== null && props.teamScores && team >= 0 && team < props.teamScores.length ? props.teamScores[team] : undefined;
+
+        result.push({
+            team,
+            players: members,
+            totals: {
+                score: reportedScore ?? members.reduce((acc, p) => acc + playerScore(p), 0),
+                kills: members.reduce((acc, p) => acc + playerKills(p), 0),
+                deaths: members.reduce((acc, p) => acc + playerDeaths(p), 0),
+            },
+        });
+    }
+
+    return result.sort((a, b) => {
+        if (a.team === null && b.team !== null) return 1;
+        if (b.team === null && a.team !== null) return -1;
+
+        return b.totals.score - a.totals.score || b.totals.kills - a.totals.kills || a.totals.deaths - b.totals.deaths;
+    });
+});
+
+/** Entries that are not objects (malformed player data) are shown raw at the end. */
+const rawPlayers = computed(() => (props.players ?? []).filter((p) => !isPlayerObject(p)));
+
+function emblemFor(p: PlayerLike): string {
+    const emblem = playerEmblem(p);
+    void ensureEmblem(emblem);
+
+    return emblemSrc(emblem);
+}
+
+function isClickable(p: PlayerLike): boolean {
+    return supportsStats.value && playerCandidateUid(p) !== null;
+}
+
+function preloadHref(p: PlayerLike) {
+    const candidate = playerCandidateUid(p);
+
+    if (supportsStats.value && candidate && !/^\d+$/.test(candidate)) {
+        void resolveStatsId(candidate);
     }
 }
 
-async function openStatsForPlayer(p: any) 
-{
-    const href = getHrefForPlayer(p);
+function openStats(p: PlayerLike) {
+    const href = playerStatsHref(p);
 
-    if (href && href !== '#') 
-    {
+    if (href !== '#') {
         window.open(href, '_blank');
-    } 
-    else 
-    {
+    } else {
         console.warn('Player stats unavailable or not supported on this server');
     }
 }
 
-function isVersionAtLeast(versionStr: string | null, minMajor: number, minMinor: number): boolean 
-{
-    if (!versionStr) 
-    {
-        return false;
-    }
-
-    const m = versionStr.match(/^(\d+)\.(\d+)/);
-
-    if (!m) 
-    {
-        return false;
-    }
-
-    const major = Number(m[1]);
-    const minor = Number(m[2]);
-
-    if (Number.isNaN(major) || Number.isNaN(minor)) 
-    {
-        return false;
-    }
-
-    if (major > minMajor) 
-    {
-        return true;
-    }
-
-    if (major < minMajor) 
-    {
-        return false;
-    }
-
-    return minor >= minMinor;
+function teamLabel(team: number): string {
+    return TEAM_NAMES[team] ? `${TEAM_NAMES[team]} Team` : `Team ${team}`;
 }
-
-const teamsEnabled = computed(() => 
-{
-    const v = props.teams;
-    return v === true || v === 'true' || v === 1 || v === '1';
-});
-
-const serverVersionProp = computed(() => String(props.serverVersion ?? '').trim());
-
-const canResolveUids = computed(() => isVersionAtLeast(getServerVersionString(), 0, 7));
-
-function isClickablePlayer(p: any): boolean 
-{
-    if (!canResolveUids.value) 
-    {
-        return false;
-    }
-
-    const candidate = getCandidateUid(p);
-    return !!candidate;
-}
-
-function resolvePlayerColor(p: any) 
-{
-    try 
-    {
-        if (teamsEnabled.value) 
-        {
-            const teamVal = p?.team ?? p?.teamIndex ?? p?.team_number ?? p?.teamNumber ?? null;
-
-            if (teamVal !== null && teamVal !== undefined) 
-            {
-                const idx = Number(teamVal);
-
-                if (!Number.isNaN(idx) && idx >= 0 && idx < TEAM_COLORS.length) 
-                {
-                    return TEAM_COLORS[idx];
-                }
-            }
-        }
-    }
-    catch 
-    {
-        // We could probably catch the exception here
-    }
-
-    const v = p?.primaryColor ?? p?.primary_color ?? p?.color ?? p?.colorPrimary ?? p?.primaryColour ?? p?.primary_colour ?? null;
-
-    if (!v) 
-    {
-        return '#424242';
-    }
-
-    if (Array.isArray(v) && v.length >= 3) 
-    {
-        return `rgb(${v[0]}, ${v[1]}, ${v[2]})`;
-    }
-
-    if (typeof v === 'object' && v !== null && v.r !== undefined) 
-    {
-        return `rgb(${v.r}, ${v.g ?? 0}, ${v.b ?? 0})`;
-    }
-
-    if (typeof v === 'string') 
-    {
-        if (/^[0-9a-fA-F]{6}$/.test(v)) 
-        {
-            return `#${v}`;
-        }
-
-        return v;
-    }
-
-    return String(v);
-}
-
-function getPlayerScore(p: any) 
-{
-    if (!p || typeof p !== 'object') 
-    {
-        return 0;
-    }
-
-    const n = Number(p.roundScore);
-
-    return Number.isNaN(n) ? 0 : n;
-}
-
-function getPlayerKills(p: any) 
-{
-    if (!p || typeof p !== 'object') 
-    {
-        return 0;
-    }
-
-    const candidates = [p.kills, p.k, p.killCount, p.kill_count];
-
-    for (const c of candidates) 
-    {
-        const n = Number(c);
-
-        if (!Number.isNaN(n)) 
-        {
-            return n;
-        }
-    }
-
-    return 0;
-}
-
-function getPlayerDeaths(p: any) 
-{
-    if (!p || typeof p !== 'object') 
-    {
-        return 0;
-    }
-
-    const candidates = [p.deaths, p.d, p.deathCount, p.death_count];
-
-    for (const c of candidates) 
-    {
-        const n = Number(c);
-
-        if (!Number.isNaN(n)) 
-        {
-            return n;
-        }
-    }
-
-    return 0;
-}
-
-function getPlayerAssists(p: any) 
-{
-    if (!p || typeof p !== 'object') 
-    {
-        return 0;
-    }
-
-    const candidates = [p.assists, p.a, p.assistCount, p.assist_count];
-
-    for (const c of candidates) 
-    {
-        const n = Number(c);
-
-        if (!Number.isNaN(n)) 
-        {
-            return n;
-        }
-    }
-
-    return 0;
-}
-
-function getPlayerBestStreak(p: any) 
-{
-    if (!p || typeof p !== 'object') 
-    {
-        return 0;
-    }
-
-    const candidates = [p.bestStreak, p.best_streak, p.killingSpree, p.killing_spree, p.streak, p.maxStreak, p.max_streak];
-
-    for (const c of candidates) 
-    {
-        const n = Number(c);
-
-        if (!Number.isNaN(n)) 
-        {
-            return n;
-        }
-    }
-
-    return 0;
-}
-
-function getPlayerRank(p: any): number | null
-{
-    if (!p || typeof p !== 'object') 
-    {
-        return null;
-    }
-    
-    if ('rank' in p) 
-    {
-        const n = Number(p.rank);
-
-        if (!Number.isNaN(n) && n >= 0) 
-        {
-            return n;
-        }
-    }
-
-    const rankFields = ['playerRank', 'service_rank', 'serviceRank'];
-
-    for (const field of rankFields) 
-    {
-        if (field in p) 
-        {
-            const n = Number(p[field]);
-
-            if (!Number.isNaN(n) && n >= 0) 
-            {
-                return n;
-            }
-        }
-    }
-
-    const candidate = getCandidateUid(p);
-
-    if (candidate) 
-    {
-        const cached = resolvedRanks.get(candidate);
-
-        if (typeof cached === 'number' && cached >= 0) 
-        {
-            const timestamp = resolvedRanksTimestamps.get(candidate);
-
-            if (timestamp && (Date.now() - timestamp < RANK_CACHE_TTL_MS)) 
-            {
-                return cached;
-            }
-
-            resolvedRanks.delete(candidate);
-            resolvedRanksTimestamps.delete(candidate);
-        }
-    }
-    
-    return null;
-}
-
-const processedPlayers = computed(() => 
-{
-    if (!props.players) 
-    {
-        return [];
-    }
-
-    return props.players.map(p => 
-    {
-        const emblemStr = getEmblemString(p);
-
-        if (emblemStr) 
-        {
-            void ensureEmblem(emblemStr);
-        }
-        
-        return { player: p, emblemStr };
-    });
-});
-
-const open = ref(false);
-const _ignoreOpenUntil = ref(0);
-
-function toggleOpen() {
-    const now = Date.now();
-
-    // If currently open, close and prevent immediate re-open for a short window.
-    if (open.value) {
-        open.value = false;
-        _ignoreOpenUntil.value = now + 300;
-        return;
-    }
-
-    // If we're within the ignore window, do nothing (prevents click-close-then-open).
-    if (now < _ignoreOpenUntil.value) return;
-
-    open.value = true;
-    void preloadAllPlayers();
-}
-
-const sortedPlayers = computed(() => 
-{
-    const items = processedPlayers.value.slice();
-
-    items.sort((a, b) => 
-    {
-        const pa = a.player;
-        const pb = b.player;
-        
-        const sa = getPlayerScore(pa); 
-        const sb = getPlayerScore(pb);
-
-        if (sb !== sa) 
-        {
-            return sb - sa;
-        }
-
-        const ka = getPlayerKills(pa);
-        const kb = getPlayerKills(pb);
-
-        if (kb !== ka) 
-        {
-            return kb - ka;
-        }
-
-        const da = getPlayerDeaths(pa);
-        const db = getPlayerDeaths(pb);
-
-        if (da !== db) 
-        {
-            return da - db;
-        }
-
-        return String(pa.name ?? pa.playerName ?? '').localeCompare(String(pb.name ?? pb.playerName ?? ''));
-    });
-    return items;
-});
-
-const groupedPlayers = computed(() => 
-{
-    if (!props.players) 
-    {
-        return [];
-    }
-
-    if (!teamsEnabled.value) 
-    {
-        return [];
-    }
-
-    const groups = new Map<number|null, Array<any>>();
-
-    for (const item of processedPlayers.value) 
-    {
-        const p = item.player;
-
-        const teamVal = p?.team ?? p?.teamIndex ?? p?.team_number ?? p?.teamNumber ?? null;
-
-        const idx = teamVal === null || teamVal === undefined ? null : Number(teamVal);
-
-        const key = (idx === null || Number.isNaN(idx)) ? null : idx;
-
-        if (!groups.has(key)) 
-        {
-            groups.set(key, []);
-        }
-
-        groups.get(key)!.push(item);
-    }
-
-    const arr: Array<any> = [];
-        
-    for (const [team, players] of groups.entries()) 
-    {
-        players.sort((a, b) => 
-        {
-            const pa = a.player;
-            const pb = b.player;
-
-            const sa = getPlayerScore(pa);
-            const sb = getPlayerScore(pb);
-
-            if (sb !== sa) 
-            {
-                return sb - sa;
-            }
-
-            const ka = getPlayerKills(pa);
-            const kb = getPlayerKills(pb);
-
-            if (kb !== ka) 
-            {
-                return kb - ka;
-            }
-
-            const da = getPlayerDeaths(pa);
-            const db = getPlayerDeaths(pb);
-
-            if (da !== db) 
-            {
-                return da - db;
-            }
-
-            return String(pa.name ?? pa.playerName ?? '').localeCompare(String(pb.name ?? pb.playerName ?? ''));
-        });
-
-        const totals = 
-        {
-            score: (props.teamScores && team !== null && team >= 0 && team < props.teamScores.length) 
-                ? props.teamScores[team] 
-                : players.reduce((acc, it) => acc + getPlayerScore(it.player), 0),
-            kills: players.reduce((acc, it) => acc + getPlayerKills(it.player), 0),
-            deaths: players.reduce((acc, it) => acc + getPlayerDeaths(it.player), 0)
-        };
-
-        arr.push({ team, players, totals });
-    }
-
-    arr.sort((a, b) => 
-    {
-        if (a.team === null && b.team !== null) 
-        {
-            return 1;
-        }
-
-        if (b.team === null && a.team !== null) 
-        {
-            return -1;
-        }
-
-        if (a.totals.score !== b.totals.score) 
-        { 
-            return b.totals.score - a.totals.score; 
-        }
-
-        if (a.totals.kills !== b.totals.kills) 
-        { 
-            return b.totals.kills - a.totals.kills; 
-        }
-
-        return a.totals.deaths - b.totals.deaths;
-    });
-
-    return arr;
-});
 </script>
 
 <template>
     <template v-if="numPlayers > 0">
-                    <ClickPopover v-model:modelValue="open" placement="bottom">
-                        <template #trigger>
-                            <button
-                                type="button"
-                                class="player-count-button cursor-pointer"
-                                @click.stop="toggleOpen"
-                            >
-                                {{ numPlayers }}/{{ maxPlayers }}
-                            </button>
-                        </template>
+        <ClickPopover v-model:model-value="open" placement="bottom">
+            <template #trigger>
+                <button type="button" class="player-count-button cursor-pointer" @click.stop="toggle">{{ numPlayers }}/{{ maxPlayers }}</button>
+            </template>
 
-                        <div class="playercard-content bg-background/100 dark:bg-background/100 backdrop-blur-xs">
-                <template v-if="passworded">
-                    <div class="text-sm text-muted-foreground">Private Server</div>
-                </template>
-                <template v-else>
-                    <table class="scoreboard-table">
-                        <thead>
-                            <tr class="scoreboard-header">
-                                <th class="players-count">Players [{{ numPlayers }}/{{ maxPlayers }}]</th>
-                                <th class="stat-header">Kills</th>
-                                <th class="stat-header stat-col-assists">Assists</th>
-                                <th class="stat-header">Deaths</th>
-                                <th class="stat-header stat-col-beststreak">Best Streak</th>
-                                <th class="stat-header">Score</th>
+            <div class="playercard-content bg-background/100 backdrop-blur-xs dark:bg-background/100">
+                <div v-if="passworded" class="text-sm text-muted-foreground">Private Server</div>
+                <table v-else class="scoreboard-table">
+                    <thead>
+                        <tr class="scoreboard-header">
+                            <th class="players-count">Players [{{ numPlayers }}/{{ maxPlayers }}]</th>
+                            <th class="stat-header">Kills</th>
+                            <th class="stat-header stat-col-assists">Assists</th>
+                            <th class="stat-header">Deaths</th>
+                            <th class="stat-header stat-col-beststreak">Best Streak</th>
+                            <th class="stat-header">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template v-for="(group, groupIdx) in groups" :key="group.team ?? 'none'">
+                            <tr v-if="teamsEnabled && group.team !== null" class="team-row" :style="{ backgroundColor: teamColor(group.team) }">
+                                <td class="team-info">
+                                    <span class="team-number">{{ groupIdx + 1 }}</span>
+                                    <span class="team-name">{{ teamLabel(group.team) }}</span>
+                                </td>
+                                <td class="stat-cell"></td>
+                                <td class="stat-cell stat-col-assists"></td>
+                                <td class="stat-cell"></td>
+                                <td class="stat-cell stat-col-beststreak"></td>
+                                <td class="stat-cell team-score">{{ group.totals.score }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <template v-if="teamsEnabled">
-                                <template v-for="(group, groupIdx) in groupedPlayers" :key="group.team ?? 'none'">
-                                    <tr v-if="group.team !== null" class="team-row" :style="{ backgroundColor: TEAM_COLORS[group.team] }">
-                                        <td class="team-info">
-                                            <span class="team-number">{{ groupIdx + 1 }}</span>
-                                            <span class="team-name">{{ TEAM_NAMES[group.team] ? (TEAM_NAMES[group.team] + ' Team') : ('Team ' + group.team) }}</span>
-                                        </td>
-                                        <td class="stat-cell"></td>
-                                        <td class="stat-cell stat-col-assists"></td>
-                                        <td class="stat-cell"></td>
-                                        <td class="stat-cell stat-col-beststreak"></td>
-                                        <td class="stat-cell team-score">{{ group.totals.score }}</td>
-                                    </tr>
-                                    <tr v-for="({ player: p, emblemStr }, idx) in group.players" :key="(group.team ?? 'none') + '-' + idx" class="player-row" :style="{ backgroundColor: resolvePlayerColor(p) }">
-                                        <template v-if="typeof p === 'object' && p !== null">
-                                            <td>
-                                                <div class="player-cell">
-                                                    <img :src="getDisplayEmblemSrc(emblemStr)" class="player-emblem" alt="emblem" decoding="async" />
-                                                    <div class="player-info">
-                                                        <template v-if="isClickablePlayer(p)">
-                                                            <a class="player-name player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">
-                                                                {{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}
-                                                            </a>
-                                                        </template>
-                                                        <template v-else>
-                                                            <span class="player-name">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}</span>
-                                                        </template>
-                                                    </div>
-                                                    <div class="player-tags">
-                                                        <span v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="service-tag">
-                                                            {{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}
-                                                        </span>
-                                                        <img v-if="supportsRanks && getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="stat-cell">{{ getPlayerKills(p) }}</td>
-                                            <td class="stat-cell stat-col-assists">{{ getPlayerAssists(p) }}</td>
-                                            <td class="stat-cell">{{ getPlayerDeaths(p) }}</td>
-                                            <td class="stat-cell stat-col-beststreak">{{ getPlayerBestStreak(p) }}</td>
-                                            <td class="stat-cell">{{ getPlayerScore(p) }}</td>
-                                        </template>
-                                        <template v-else>
-                                            <td colspan="6">{{ p }}</td>
-                                        </template>
-                                    </tr>
-                                </template>
-                            </template>
-                            <template v-else>
-                                <tr v-for="({ player: p, emblemStr }, index) in sortedPlayers" :key="index" class="player-row" :style="{ backgroundColor: resolvePlayerColor(p) }">
-                                    <template v-if="typeof p === 'object' && p !== null">
-                                        <td>
-                                            <div class="player-cell">
-                                                <img :src="getDisplayEmblemSrc(emblemStr)" class="player-emblem" alt="emblem" decoding="async" />
-                                                <div class="player-info">
-                                                    <template v-if="isClickablePlayer(p)">
-                                                        <a class="player-name player-link" :href="getHrefForPlayer(p)" target="_blank" @click.prevent="openStatsForPlayer(p)" @mouseenter.prevent="preloadStatsHref(p)">
-                                                            {{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}
-                                                        </a>
-                                                    </template>
-                                                    <template v-else>
-                                                        <span class="player-name">{{ p?.name ?? p?.playerName ?? p?.displayName ?? p?.player_name ?? 'Unknown' }}</span>
-                                                    </template>
-                                                </div>
-                                                <div class="player-tags">
-                                                    <span v-if="p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag" class="service-tag">
-                                                        {{ p.serviceTag ?? p.service_tag ?? p.tag ?? p.playerTag ?? p.player_tag ?? p.stag }}
-                                                    </span>
-                                                    <img v-if="supportsRanks && getPlayerRank(p) !== null" :src="`/assets/ranks/${getPlayerRank(p)}.svg`" class="player-rank-icon" alt="rank" decoding="async" />
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="stat-cell">{{ getPlayerKills(p) }}</td>
-                                        <td class="stat-cell stat-col-assists">{{ getPlayerAssists(p) }}</td>
-                                        <td class="stat-cell">{{ getPlayerDeaths(p) }}</td>
-                                        <td class="stat-cell stat-col-beststreak">{{ getPlayerBestStreak(p) }}</td>
-                                        <td class="stat-cell">{{ getPlayerScore(p) }}</td>
-                                    </template>
-                                    <template v-else>
-                                        <td colspan="6">{{ p }}</td>
-                                    </template>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </template>
-                    </div>
-                </ClickPopover>
+                            <tr
+                                v-for="(p, idx) in group.players"
+                                :key="(group.team ?? 'none') + '-' + idx"
+                                class="player-row"
+                                :style="{ backgroundColor: playerColor(p, teamsEnabled) }"
+                            >
+                                <td>
+                                    <div class="player-cell">
+                                        <img :src="emblemFor(p)" class="player-emblem" alt="emblem" decoding="async" />
+                                        <div class="player-info">
+                                            <a
+                                                v-if="isClickable(p)"
+                                                class="player-name player-link"
+                                                :href="playerStatsHref(p)"
+                                                target="_blank"
+                                                @click.prevent="openStats(p)"
+                                                @mouseenter.prevent="preloadHref(p)"
+                                            >
+                                                {{ playerName(p) }}
+                                            </a>
+                                            <span v-else class="player-name">{{ playerName(p) }}</span>
+                                        </div>
+                                        <div class="player-tags">
+                                            <span v-if="playerServiceTag(p)" class="service-tag">{{ playerServiceTag(p) }}</span>
+                                            <img
+                                                v-if="supportsStats && playerRank(p) !== null"
+                                                :src="`/assets/ranks/${playerRank(p)}.svg`"
+                                                class="player-rank-icon"
+                                                alt="rank"
+                                                decoding="async"
+                                            />
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="stat-cell">{{ playerKills(p) }}</td>
+                                <td class="stat-cell stat-col-assists">{{ playerAssists(p) }}</td>
+                                <td class="stat-cell">{{ playerDeaths(p) }}</td>
+                                <td class="stat-cell stat-col-beststreak">{{ playerBestStreak(p) }}</td>
+                                <td class="stat-cell">{{ playerScore(p) }}</td>
+                            </tr>
+                        </template>
+                        <tr v-for="(p, idx) in rawPlayers" :key="'raw-' + idx" class="player-row" style="background-color: #424242">
+                            <td colspan="6">{{ p }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </ClickPopover>
     </template>
     <template v-else>
         <span class="cursor-default">{{ numPlayers }}/{{ maxPlayers }}</span>

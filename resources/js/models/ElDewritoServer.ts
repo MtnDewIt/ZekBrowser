@@ -1,7 +1,18 @@
 import { ValidationError } from '@/exceptions/ValidationError';
 
-export class ElDewritoServer 
-{
+export interface ElDewritoMod {
+    id: string;
+    mod_name?: string;
+    mod_version?: string;
+    mod_author?: string;
+    mod_website?: string;
+    package_url?: string;
+    package_size?: number;
+    [key: string]: unknown;
+}
+
+/** One entry of the /api/ "servers" map, with its "ip:port" key added as `ip`. */
+export interface ElDewritoServerData {
     ip: string;
     name: string;
     port: number;
@@ -13,6 +24,7 @@ export class ElDewritoServer
     assassinationEnabled: '0' | '1';
     voteSystemType?: number;
     teams: boolean;
+    teamScores?: number[];
     map: string;
     mapFile: string;
     variant: string;
@@ -27,158 +39,133 @@ export class ElDewritoServer
     modPackageVersion?: string;
     xnkid?: string;
     xnaddress?: string;
-    players?: array;
+    players?: unknown[];
     isDedicated: boolean;
     gameVersion: string;
     eldewritoVersion: string;
-    mods?: array;
-
     eldewritoVersionShort: string;
     firstSeenAt: string;
     reverseDns?: string;
+    /** Keyed by mod id as served by the game server's /mods endpoint. */
+    mods?: Record<string, Omit<ElDewritoMod, 'id'>>;
+}
 
-    constructor(data: 
-    {
-        ip: string;
-        name: string;
-        port: number;
-        fileServerPort?: number;
-        hostPlayer: string;
-        passworded?: boolean;
-        sprintState?: '0' | '1' | '2';
-        sprintUnlimitedEnabled: '0' | '1';
-        assassinationEnabled: '0' | '1';
-        voteSystemType?: number;
-        teams: boolean;
-        map: string;
-        mapFile: string;
-        variant: string;
-        variantType: string;
-        status: 'InLobby' | 'Loading' | 'InGame';
-        numPlayers: number;
-        maxPlayers: number;
-        modCount?: number;
-        modPackageName?: string;
-        modPackageAuthor?: string;
-        modPackageHash?: string;
-        modPackageVersion?: string;
-        xnkid?: string;
-        xnaddress?: string;
-        players?: any[];
-        isDedicated: boolean;
-        gameVersion: string;
-        eldewritoVersion: string;
-        eldewritoVersionShort: string;
-        firstSeenAt: string;
-        reverseDns?: string;
-        mods?: object;
-    }) 
-    {
+export class ElDewritoServer {
+    ip!: string;
+    name!: string;
+    port!: number;
+    fileServerPort?: number;
+    hostPlayer!: string;
+    passworded?: boolean;
+    sprintState?: '0' | '1' | '2';
+    sprintUnlimitedEnabled!: '0' | '1';
+    assassinationEnabled!: '0' | '1';
+    voteSystemType?: number;
+    teams!: boolean;
+    teamScores?: number[];
+    map!: string;
+    mapFile!: string;
+    variant!: string;
+    variantType!: string;
+    status!: 'InLobby' | 'Loading' | 'InGame';
+    numPlayers!: number;
+    maxPlayers!: number;
+    modCount?: number;
+    modPackageName?: string;
+    modPackageAuthor?: string;
+    modPackageHash?: string;
+    modPackageVersion?: string;
+    xnkid?: string;
+    xnaddress?: string;
+    players?: unknown[];
+    isDedicated!: boolean;
+    gameVersion!: string;
+    eldewritoVersion!: string;
+    eldewritoVersionShort!: string;
+    firstSeenAt!: string;
+    reverseDns?: string;
+    mods?: ElDewritoMod[];
+
+    constructor(data: ElDewritoServerData) {
         ElDewritoServer.validate(data);
-        Object.assign(this, data);
 
-        if (typeof data.mods === 'object') 
-        {
-            this.mods = [];
+        const { mods, ...rest } = data;
+        Object.assign(this, rest);
 
-            Object.entries(data.mods).forEach(([id, data]) => 
-            {
-                this.mods.push({
-                    id: id,
-                    ...data,
-                });
-            });
+        if (mods && typeof mods === 'object') {
+            this.mods = Object.entries(mods).map(([id, mod]) => ({ id, ...mod }));
         }
     }
 
-    static validate(data: any): void 
-    {
-        const errors: string[] = [];
-
-        if (typeof data !== 'object' || data === null) 
-        {
-            errors.push('data is not an object');
-            throw new ValidationError('Server validation failed', errors);
+    static validate(data: unknown): asserts data is ElDewritoServerData {
+        if (typeof data !== 'object' || data === null) {
+            throw new ValidationError('Server validation failed', ['data is not an object']);
         }
 
-        const rules: [string, boolean][] = 
-        [
-            ['ip', typeof data.ip === 'string'],
-            ['name', typeof data.name === 'string'],
-            ['port', typeof data.port === 'number'],
-            ['fileServerPort', typeof data.fileServerPort === 'undefined' || typeof data.fileServerPort === 'number'],
-            ['hostPlayer', typeof data.hostPlayer === 'string'],
-            ['passworded', typeof data.passworded === 'undefined' || typeof data.passworded === 'boolean'],
-            ['sprintState', typeof data.sprintState === 'undefined' || ['0', '1', '2'].includes(data.sprintState)],
-            ['sprintUnlimitedEnabled', ['0', '1'].includes(data.sprintUnlimitedEnabled)],
-            ['assassinationEnabled', ['0', '1'].includes(data.assassinationEnabled)],
-            ['voteSystemType', typeof data.voteSystemType === 'undefined' || typeof data.voteSystemType === 'number'],
-            ['teams', typeof data.teams === 'boolean'],
-            ['map', typeof data.map === 'string'],
-            ['mapFile', typeof data.mapFile === 'string'],
-            ['variant', typeof data.variant === 'string'],
-            ['variantType', typeof data.variantType === 'string'],
-            ['status', ['InLobby', 'Loading', 'InGame'].includes(data.status)],
-            ['numPlayers', typeof data.numPlayers === 'number'],
-            ['maxPlayers', typeof data.maxPlayers === 'number'],
-            ['modCount', typeof data.modCount === 'undefined' || typeof data.modCount === 'number'],
-            ['modPackageName', typeof data.modPackageName === 'undefined' || typeof data.modPackageName === 'string'],
-            ['modPackageAuthor', typeof data.modPackageAuthor === 'undefined' || typeof data.modPackageAuthor === 'string'],
-            ['modPackageHash', typeof data.modPackageHash === 'undefined' || typeof data.modPackageHash === 'string'],
-            ['modPackageVersion', typeof data.modPackageVersion === 'undefined' || typeof data.modPackageVersion === 'string'],
-            ['xnkid', typeof data.xnkid === 'undefined' || typeof data.xnkid === 'string'],
-            ['xnaddress', typeof data.xnaddress === 'undefined' || typeof data.xnaddress === 'string'],
-            ['players', typeof data.players === 'undefined' || Array.isArray(data.players)],
-            ['isDedicated', typeof data.isDedicated === 'boolean'],
-            ['gameVersion', typeof data.gameVersion === 'string'],
-            ['eldewritoVersion', typeof data.eldewritoVersion === 'string'],
-            ['eldewritoVersionShort', typeof data.eldewritoVersionShort === 'string'],
-            ['firstSeenAt', typeof data.firstSeenAt === 'string'],
-            ['reverseDns', typeof data.reverseDns === 'undefined' || typeof data.reverseDns === 'string'],
-            ['mods', typeof data.mods === 'undefined' || typeof data.mods === 'object'],
+        const d = data as Record<string, unknown>;
+        const optional = (key: string, check: (v: unknown) => boolean) => d[key] === undefined || check(d[key]);
+        const isString = (v: unknown) => typeof v === 'string';
+        const isNumber = (v: unknown) => typeof v === 'number';
+        const isBoolean = (v: unknown) => typeof v === 'boolean';
+        const oneOf = (values: unknown[]) => (v: unknown) => values.includes(v);
+
+        const rules: [string, boolean][] = [
+            ['ip', isString(d.ip)],
+            ['name', isString(d.name)],
+            ['port', isNumber(d.port)],
+            ['fileServerPort', optional('fileServerPort', isNumber)],
+            ['hostPlayer', isString(d.hostPlayer)],
+            ['passworded', optional('passworded', isBoolean)],
+            ['sprintState', optional('sprintState', oneOf(['0', '1', '2']))],
+            ['sprintUnlimitedEnabled', oneOf(['0', '1'])(d.sprintUnlimitedEnabled)],
+            ['assassinationEnabled', oneOf(['0', '1'])(d.assassinationEnabled)],
+            ['voteSystemType', optional('voteSystemType', isNumber)],
+            ['teams', isBoolean(d.teams)],
+            ['teamScores', optional('teamScores', Array.isArray)],
+            ['map', isString(d.map)],
+            ['mapFile', isString(d.mapFile)],
+            ['variant', isString(d.variant)],
+            ['variantType', isString(d.variantType)],
+            ['status', oneOf(['InLobby', 'Loading', 'InGame'])(d.status)],
+            ['numPlayers', isNumber(d.numPlayers)],
+            ['maxPlayers', isNumber(d.maxPlayers)],
+            ['modCount', optional('modCount', isNumber)],
+            ['modPackageName', optional('modPackageName', isString)],
+            ['modPackageAuthor', optional('modPackageAuthor', isString)],
+            ['modPackageHash', optional('modPackageHash', isString)],
+            ['modPackageVersion', optional('modPackageVersion', isString)],
+            ['xnkid', optional('xnkid', isString)],
+            ['xnaddress', optional('xnaddress', isString)],
+            ['players', optional('players', Array.isArray)],
+            ['isDedicated', isBoolean(d.isDedicated)],
+            ['gameVersion', isString(d.gameVersion)],
+            ['eldewritoVersion', isString(d.eldewritoVersion)],
+            ['eldewritoVersionShort', isString(d.eldewritoVersionShort)],
+            ['firstSeenAt', isString(d.firstSeenAt)],
+            ['reverseDns', optional('reverseDns', isString)],
+            ['mods', optional('mods', (v) => typeof v === 'object')],
         ];
 
-        for (const [field, passed] of rules) 
-        {
-            if (!passed) 
-            {
-                errors.push(`${field} "${data[field]}" is invalid`);
-            }
-        }
+        const errors = rules.filter(([, passed]) => !passed).map(([field]) => `${field} "${d[field]}" is invalid`);
 
-        if (errors.length > 0) 
-        {
+        if (errors.length > 0) {
             throw new ValidationError('Server validation failed', errors);
         }
     }
 
-    statusFormatted(): string 
-    {
-        if (this.numPlayers > 0) 
-        {
-            if (this.status === 'InLobby') 
-            {
-                return 'In lobby';
-            } 
-            else 
-            {
-                const mapName = this.map || this.mapFile;
-                return `Playing ${this.variant} on ${mapName}`;
-            }
-        } 
-        else 
-        {
+    statusFormatted(): string {
+        if (this.numPlayers <= 0) {
             return 'Waiting for players...';
         }
-    }
 
-    versionWithoutTrailingZero(): string 
-    {
-        if (this.eldewritoVersionShort.endsWith('.0')) 
-        {
-            return this.eldewritoVersionShort.slice(0, -2);
+        if (this.status === 'InLobby') {
+            return 'In lobby';
         }
 
-        return this.eldewritoVersionShort;
+        return `Playing ${this.variant} on ${this.map || this.mapFile}`;
+    }
+
+    versionWithoutTrailingZero(): string {
+        return this.eldewritoVersionShort.endsWith('.0') ? this.eldewritoVersionShort.slice(0, -2) : this.eldewritoVersionShort;
     }
 }

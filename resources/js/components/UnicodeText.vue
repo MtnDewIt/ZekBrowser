@@ -1,101 +1,66 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { useAppearance } from '@/composables/useAppearance'
+import { useAppearance } from '@/composables/useAppearance';
+import { availableGlyphs, glyphImageUrl, loadAvailableGlyphs, toHex } from '@/lib/unicodeGlyphs';
+import { computed, onMounted } from 'vue';
 
-const props = defineProps<{ text?: string; stripUnicode?: boolean }>()
+const props = defineProps<{ text?: string; stripUnicode?: boolean }>();
 
-// default fallback codes (kept for backward-compatibility if listing API is unavailable)
-const FALLBACK_CODES = new Set([0x2611 ,0x2713, 0x2605, 0x2691, 0xE050])
-// codes that should be visually inverted when dark theme is active
-const INVERT_ON_DARK = new Set([
-  0x2605, 0x2639, 0x263B, 0x2691, 0x2713, 0x2717,
-  0xE000, 0xE001, 0xE002, 0xE004, 0xE005, 0xE006, 0xE007, 0xE008,
-  0xE065, 0xE066, 0xE067, 0xE068, 0xE069, 0xE070, 0xE071, 0xE072,
-  0xE073, 0xE074, 0xE075, 0xE076, 0xE077, 0xE078, 0xE079, 0xE080,
-  0xE081, 0xE082, 0xE083, 0xE084, 0xE085, 0xE086, 0xE087, 0xE088,
-  0xE089, 0xE090, 0xE091, 0xE092, 0xE093, 0xE094, 0xE095, 0xE096,
-  0xE097, 0xE098, 0xE099, 0xE10A, 0xE10B, 0xE10C, 0xE10D, 0xE10E,
-  0xE10F, 0xE110, 0xE111, 0xE112, 0xE113, 0xE114, 0xE115, 0xE116,
-  0xE117, 0xE118, 0xE119, 0xE11A, 0xE11B, 0xE11C, 0xE11D, 0xE11E,
-  0xE11F, 0xE120, 0xE121, 0xE122, 0xE123, 0xE124, 0xE125, 0xE126,
-  0xE127, 0xE128, 0xE129, 0xE12A, 0xE12B, 0xE12C, 0xE12D, 0xE12E,
-  0xE12F, 0xE130, 0xE131
-])
+// Glyph images are drawn for the dark theme; these are inverted when the light theme is active.
+const INVERT_IN_LIGHT_THEME = new Set([
+    0x2605, 0x2639, 0x263b, 0x2691, 0x2713, 0x2717, 0xe000, 0xe001, 0xe002, 0xe004, 0xe005, 0xe006, 0xe007, 0xe008, 0xe065, 0xe066, 0xe067, 0xe068,
+    0xe069, 0xe070, 0xe071, 0xe072, 0xe073, 0xe074, 0xe075, 0xe076, 0xe077, 0xe078, 0xe079, 0xe080, 0xe081, 0xe082, 0xe083, 0xe084, 0xe085, 0xe086,
+    0xe087, 0xe088, 0xe089, 0xe090, 0xe091, 0xe092, 0xe093, 0xe094, 0xe095, 0xe096, 0xe097, 0xe098, 0xe099, 0xe10a, 0xe10b, 0xe10c, 0xe10d, 0xe10e,
+    0xe10f, 0xe110, 0xe111, 0xe112, 0xe113, 0xe114, 0xe115, 0xe116, 0xe117, 0xe118, 0xe119, 0xe11a, 0xe11b, 0xe11c, 0xe11d, 0xe11e, 0xe11f, 0xe120,
+    0xe121, 0xe122, 0xe123, 0xe124, 0xe125, 0xe126, 0xe127, 0xe128, 0xe129, 0xe12a, 0xe12b, 0xe12c, 0xe12d, 0xe12e, 0xe12f, 0xe130, 0xe131,
+]);
 
-// dynamic set of available PNG basenames (e.g., '2611','2713', ...)
-const availableCodes = ref<Set<string> | null>(null)
+const { appearance } = useAppearance();
+const isDark = computed(() => appearance.value === 'dark');
 
-async function loadAvailableCodes() {
-  // try sessionStorage cache first
-  try {
-    const raw = sessionStorage.getItem('zekbrowser.unicodeFiles')
-    if (raw) {
-      const arr = JSON.parse(raw || '[]') as string[]
-      availableCodes.value = new Set(arr.map(s => s.toUpperCase()))
-      return
+type Part = string | { src: string; alt: string; invert: boolean };
+
+const parts = computed<Part[]>(() => {
+    let chars = Array.from(props.text ?? '');
+
+    if (props.stripUnicode) {
+        chars = chars.filter((ch) => (ch.codePointAt(0) ?? 0) <= 127);
     }
-  } catch (e) {
-    // ignore and continue
-  }
 
-  try {
-    const res = await fetch('/api/unicode/list');
-    if (res.ok) {
-      const arr = await res.json();
-      if (Array.isArray(arr)) {
-        const upper = arr.map((s: string) => String(s).toUpperCase())
-        availableCodes.value = new Set(upper)
-        try { sessionStorage.setItem('zekbrowser.unicodeFiles', JSON.stringify(upper)) } catch (e) {}
-        return
-      }
-    }
-  } catch (e) {
-    // ignore
-  }
+    return chars.map((ch) => {
+        const cp = ch.codePointAt(0) ?? 0;
+        const hex = toHex(cp);
 
-  // fallback: build set from FALLBACK_CODES
-  const fb: string[] = []
-  for (const cp of Array.from(FALLBACK_CODES)) fb.push(cp.toString(16).toUpperCase())
-  availableCodes.value = new Set(fb)
-}
+        if (!availableGlyphs.value.has(hex)) {
+            return ch;
+        }
 
-const { appearance } = useAppearance()
-const isDark = computed(() => appearance.value === 'dark')
+        return { src: glyphImageUrl(hex), alt: `U+${hex}`, invert: !isDark.value && INVERT_IN_LIGHT_THEME.has(cp) };
+    });
+});
 
-const parts = computed(() => {
-  let s = props.text ?? ''
-  // Optionally strip non-ASCII (unicode) characters entirely — useful for descriptions
-  if (props.stripUnicode) {
-    s = Array.from(s).filter(ch => ((ch.codePointAt(0) ?? 0) <= 127)).join('')
-  }
-  const arr: Array<string | { src: string; alt: string; cp?: number }> = []
-  // iterate by codepoint to handle surrogate pairs
-  for (const ch of Array.from(s)) {
-    const cp = ch.codePointAt(0) ?? 0
-    const hex = cp.toString(16).toUpperCase()
-    const useImg = availableCodes.value ? availableCodes.value.has(hex) : FALLBACK_CODES.has(cp)
-    if (useImg) {
-      arr.push({ src: `/assets/unicode/${hex}.webp`, alt: `U+${hex}`, cp })
-    } else {
-      arr.push(ch)
-    }
-  }
-  return arr
-})
-
-onMounted(() => { loadAvailableCodes() })
+onMounted(() => void loadAvailableGlyphs());
 </script>
 
 <template>
-  <span class="unicode-text inline-flex items-center">
-    <template v-for="(p, idx) in parts" :key="idx">
-      <img v-if="typeof p !== 'string'" :src="p.src" :alt="p.alt" :class="['inline-block w-4 h-4 align-middle mx-[2px]', (p.cp && !isDark && ((p.cp && (typeof p.cp === 'number')) ? INVERT_ON_DARK.has(p.cp) : false)) ? 'invert' : '']" />
-      <span v-else>{{ p }}</span>
-    </template>
-  </span>
+    <span class="unicode-text inline-flex items-center">
+        <template v-for="(p, idx) in parts" :key="idx">
+            <img
+                v-if="typeof p !== 'string'"
+                :src="p.src"
+                :alt="p.alt"
+                class="mx-[2px] inline-block h-4 w-4 align-middle"
+                :class="{ invert: p.invert }"
+            />
+            <span v-else>{{ p }}</span>
+        </template>
+    </span>
 </template>
 
 <style scoped>
-.unicode-text img { display: inline-block }
-.unicode-text img.invert { filter: invert(1) hue-rotate(180deg); }
+.unicode-text img {
+    display: inline-block;
+}
+.unicode-text img.invert {
+    filter: invert(1) hue-rotate(180deg);
+}
 </style>

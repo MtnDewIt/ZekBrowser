@@ -1,6 +1,5 @@
-import type { Page, PageProps as InertiaPageProps, Router } from '@inertiajs/core';
-import type { createHeadManager } from '@inertiajs/core';
 import type { AppPageProps } from '@/types/index';
+import type { createHeadManager, PageProps as InertiaPageProps, Page, Router } from '@inertiajs/core';
 
 declare module 'vite/client' {
     interface ImportMetaEnv {
